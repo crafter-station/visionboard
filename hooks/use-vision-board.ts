@@ -338,6 +338,21 @@ export function useVisionBoard() {
     setStep("upload");
   }, []);
 
+  const savePositions = useCallback(
+    async (positions: Array<{ id: string; x: number; y: number; width: number; height: number }>) => {
+      try {
+        await fetch("/api/save-layout", {
+          method: "POST",
+          headers: createAuthHeaders(visitorId),
+          body: JSON.stringify({ positions }),
+        });
+      } catch (error) {
+        console.error("Failed to save positions:", error);
+      }
+    },
+    [visitorId]
+  );
+
   const isGenerating = goals.some((g) => g.isGenerating);
 
   return {
@@ -360,5 +375,6 @@ export function useVisionBoard() {
     deleteBoard,
     loadExistingBoard,
     resetToUpload,
+    savePositions,
   };
 }

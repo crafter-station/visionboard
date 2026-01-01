@@ -121,23 +121,23 @@ export function GoalInput({
       </div>
 
       {canAddMore && (
-        <div className="flex gap-3">
-          <Input
-            value={newGoal}
-            onChange={(e) => setNewGoal(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && addGoal(newGoal)}
-            placeholder="Add another goal..."
-            className="flex-1"
-          />
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => addGoal(newGoal)}
-            disabled={!newGoal.trim()}
-          >
-            <Plus className="size-4" />
-          </Button>
-        </div>
+      <div className="flex gap-3">
+        <Input
+          value={newGoal}
+          onChange={(e) => setNewGoal(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && addGoal(newGoal)}
+          placeholder="Add another goal..."
+          className="flex-1"
+        />
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => addGoal(newGoal)}
+          disabled={!newGoal.trim()}
+        >
+          <Plus className="size-4" />
+        </Button>
+      </div>
       )}
 
       {!canAddMore && (

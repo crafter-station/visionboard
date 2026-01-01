@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
-import { removeBackground } from "@/lib/fal";
+import { removeBackground, pixelateImage } from "@/lib/fal";
 import { createVisionBoard, countBoardsByVisitor, LIMITS } from "@/db/queries";
 import { validateRequest } from "@/lib/auth";
 
@@ -28,7 +28,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No image URL provided" }, { status: 400 });
   }
 
-  const noBgUrl = await removeBackground(imageUrl);
+  const pixelatedUrl = await pixelateImage(imageUrl);
+
+  const noBgUrl = await removeBackground(pixelatedUrl);
 
   const response = await fetch(noBgUrl);
   const imageBuffer = await response.arrayBuffer();
