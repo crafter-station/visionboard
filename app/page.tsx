@@ -49,11 +49,11 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-background flex flex-col">
       <header className="border-b sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <div className="container mx-auto px-3 py-3 sm:px-4 sm:py-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
               {step === "board" && boardData?.noBgUrl && (
-                <div className="size-12 rounded-full overflow-hidden border-2 border-foreground bg-muted flex-shrink-0">
+                <div className="size-8 sm:size-12 rounded-full overflow-hidden border-2 border-foreground bg-muted flex-shrink-0">
                   <img
                     src={boardData.noBgUrl}
                     alt="Your photo"
@@ -61,46 +61,48 @@ export default function Home() {
                   />
                 </div>
               )}
-            <div>
-                <h1 className="text-2xl font-bold tracking-tight">Agentic Vision Board</h1>
-              <p className="text-sm text-muted-foreground">2026 Edition</p>
+              <div className="min-w-0">
+                <h1 className="text-base sm:text-xl font-bold tracking-tight truncate">
+                  Vision Board
+                </h1>
+                <p className="text-xs text-muted-foreground hidden sm:block">2026 Edition</p>
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
               <GithubBadge />
-            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 sm:gap-2">
                 {["upload", "goals", "board"].map((s, i) => (
-                <div
-                  key={s}
-                  className={cn(
-                    "flex items-center gap-2 text-sm",
-                    step === s
-                      ? "text-foreground font-medium"
-                      : "text-muted-foreground"
-                  )}
-                >
-                  <span
+                  <div
+                    key={s}
                     className={cn(
-                      "size-6 flex items-center justify-center text-xs border",
+                      "flex items-center gap-1 sm:gap-2 text-xs sm:text-sm",
                       step === s
-                        ? "bg-foreground text-background"
-                        : "bg-transparent"
+                        ? "text-foreground font-medium"
+                        : "text-muted-foreground"
                     )}
                   >
-                    {i + 1}
-                  </span>
-                  <span className="hidden sm:inline capitalize">{s}</span>
-                </div>
-              ))}
+                    <span
+                      className={cn(
+                        "size-5 sm:size-6 flex items-center justify-center text-[10px] sm:text-xs border",
+                        step === s
+                          ? "bg-foreground text-background"
+                          : "bg-transparent"
+                      )}
+                    >
+                      {i + 1}
+                    </span>
+                    <span className="hidden md:inline capitalize">{s}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-12 flex-1">
+      <div className="container mx-auto px-3 py-6 sm:px-4 sm:py-12 flex-1">
         {step === "upload" && (
-          <div className="max-w-4xl mx-auto space-y-12">
+          <div className="max-w-4xl mx-auto space-y-8 sm:space-y-12">
             {existingBoards.length > 0 && (
               <ExistingBoards
                 boards={existingBoards}
@@ -117,20 +119,20 @@ export default function Home() {
                   <img
                     src="/brand/hero-Image.png"
                     alt="Vision Board AI"
-                    className="w-full max-w-2xl h-auto object-contain"
+                    className="w-full max-w-md sm:max-w-2xl h-auto object-contain"
                   />
                 </div>
-          <div className="max-w-2xl mx-auto space-y-8">
-            <div className="text-center space-y-2">
-              <h2 className="text-3xl font-bold tracking-tight">
+                <div className="max-w-2xl mx-auto space-y-6 sm:space-y-8">
+                  <div className="text-center space-y-2">
+                    <h2 className="text-xl sm:text-3xl font-bold tracking-tight">
                       {existingBoards.length > 0 ? "Create Another Board" : "Start with Your Photo"}
-              </h2>
-              <p className="text-muted-foreground">
-                Upload a photo of yourself. We will remove the background and use
-                it to place you in your dream scenarios.
-              </p>
-            </div>
-            <PhotoUpload visitorId={visitorId} onUploadComplete={onUploadComplete} />
+                    </h2>
+                    <p className="text-sm sm:text-base text-muted-foreground">
+                      Upload a photo of yourself. We will remove the background and use
+                      it to place you in your dream scenarios.
+                    </p>
+                  </div>
+                  <PhotoUpload visitorId={visitorId} onUploadComplete={onUploadComplete} />
                 </div>
               </>
             ) : (
@@ -145,14 +147,14 @@ export default function Home() {
         )}
 
         {step === "goals" && (
-          <div className="max-w-2xl mx-auto space-y-8">
+          <div className="max-w-2xl mx-auto space-y-6 sm:space-y-8">
             {boardData && (
               <div className="flex justify-center">
                 <div className="relative">
                   <img
                     src={boardData.noBgUrl}
                     alt="Your photo"
-                    className="h-32 w-auto object-contain"
+                    className="h-24 sm:h-32 w-auto object-contain"
                   />
                 </div>
               </div>

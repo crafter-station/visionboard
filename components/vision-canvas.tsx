@@ -6,6 +6,8 @@ import { Check, Link, RefreshCw, Trash2, ArrowLeft } from "lucide-react";
 import { ImageCard } from "@/components/image-card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-media-query";
+import { MobileVisionCarousel } from "@/components/mobile-vision-carousel";
 import type { Goal } from "@/components/goal-input";
 
 const FRAME_RATIO = 1618 / 2001;
@@ -55,6 +57,7 @@ export function VisionCanvas({
   onBack,
   onSavePositions,
 }: VisionCanvasProps) {
+  const isMobile = useIsMobile();
   const [copied, setCopied] = useState(false);
   const [positions, setPositions] = useState<Position[]>([]);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -154,6 +157,18 @@ export function VisionCanvas({
   };
 
   const allGenerated = goals.every((g) => g.generatedImageUrl && !g.isGenerating);
+
+  if (isMobile) {
+    return (
+      <MobileVisionCarousel
+        boardId={boardId}
+        goals={goals}
+        onRegenerate={onRegenerate}
+        onDeleteGoal={onDeleteGoal}
+        onBack={onBack}
+      />
+    );
+  }
 
   return (
     <div className="w-full space-y-6">

@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useState, useEffect } from "react";
-import { Upload, X, Loader2 } from "lucide-react";
+import { Upload, X, Loader2, Camera } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-media-query";
 
 const LOADING_MESSAGES = [
   "Convincing pixels to behave...",
@@ -25,6 +26,7 @@ interface PhotoUploadProps {
 }
 
 export function PhotoUpload({ visitorId, onUploadComplete }: PhotoUploadProps) {
+  const isMobile = useIsMobile();
   const [isDragging, setIsDragging] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -141,15 +143,16 @@ export function PhotoUpload({ visitorId, onUploadComplete }: PhotoUploadProps) {
         onDrop={handleDrop}
         className={cn(
           "relative border-2 border-dashed transition-all duration-300 ease-out",
-          "flex flex-col items-center justify-center p-8 min-h-[300px]",
+          "flex flex-col items-center justify-center p-6 sm:p-8",
+          "min-h-[250px] sm:min-h-[300px]",
           isDragging
             ? "border-foreground bg-accent/50"
-            : "border-muted-foreground/30 hover:border-foreground/50",
+            : "border-muted-foreground/30 hover:border-foreground/50 active:border-foreground/50 active:bg-accent/30",
           preview && "border-solid"
         )}
       >
         {preview ? (
-          <div className="relative w-full h-full min-h-[250px]">
+          <div className="relative w-full h-full min-h-[200px] sm:min-h-[250px]">
             <img
               src={preview}
               alt="Preview"
@@ -158,15 +161,15 @@ export function PhotoUpload({ visitorId, onUploadComplete }: PhotoUploadProps) {
             {!isLoading && (
               <button
                 onClick={clearPreview}
-                className="absolute top-2 right-2 p-1 bg-background/80 hover:bg-background transition-colors"
+                className="absolute top-2 right-2 p-2 bg-background/80 hover:bg-background transition-colors"
               >
-                <X className="size-4" />
+                <X className="size-5" />
               </button>
             )}
             {isLoading && (
               <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center gap-3">
                 <Loader2 className="size-8 animate-spin" />
-                <span className="text-sm font-medium">
+                <span className="text-sm font-medium text-center px-4">
                   {isUploading ? "Uploading..." : loadingMessage}
                 </span>
               </div>
@@ -174,14 +177,21 @@ export function PhotoUpload({ visitorId, onUploadComplete }: PhotoUploadProps) {
           </div>
         ) : (
           <>
-            <Upload className="size-12 text-muted-foreground mb-4" />
-            <p className="text-lg font-medium mb-2">Upload your photo</p>
-            <p className="text-sm text-muted-foreground mb-4">
-              Drag and drop or click to select
+            {isMobile ? (
+              <Camera className="size-10 sm:size-12 text-muted-foreground mb-3 sm:mb-4" />
+            ) : (
+              <Upload className="size-10 sm:size-12 text-muted-foreground mb-3 sm:mb-4" />
+            )}
+            <p className="text-base sm:text-lg font-medium mb-1 sm:mb-2">
+              {isMobile ? "Tap to upload" : "Upload your photo"}
+            </p>
+            <p className="text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4 text-center">
+              {isMobile ? "Choose from gallery or camera" : "Drag and drop or click to select"}
             </p>
             <input
               type="file"
               accept="image/*"
+              capture={isMobile ? "environment" : undefined}
               onChange={handleChange}
               className="absolute inset-0 opacity-0 cursor-pointer"
             />
