@@ -22,6 +22,24 @@ const FRAME = {
   },
 };
 
+const ROTATION_RANGE = { min: -9, max: 14 };
+
+function generateSeededRandom(seed: string): number {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    const char = seed.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash % 10000) / 10000;
+}
+
+function getRandomRotation(id: string): number {
+  const range = ROTATION_RANGE.max - ROTATION_RANGE.min;
+  const random = generateSeededRandom(id);
+  return ROTATION_RANGE.min + random * range;
+}
+
 export default async function OGImage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const board = await getVisionBoard(id);
@@ -100,6 +118,7 @@ export default async function OGImage({ params }: { params: Promise<{ id: string
                 height: cardHeight,
                 position: "relative",
                 display: "flex",
+                transform: `rotate(${getRandomRotation(goal.id)}deg)`,
               }}
             >
               {goal.generatedImageUrl && (
