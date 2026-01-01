@@ -210,7 +210,7 @@ export function useVisionBoard() {
         .map((g) => ({ localId: g.id, dbId: g.id, title: g.title })),
     ];
 
-    const CONCURRENCY = 3;
+    const CONCURRENCY = 4;
 
     const processGoal = async (goalMapping: {
       localId: string;

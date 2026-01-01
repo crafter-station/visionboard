@@ -66,7 +66,7 @@ export default async function OGImage({ params }: { params: Promise<{ id: string
   }
 
   const goalsWithImages = board.goals.filter((g) => g.generatedImageUrl);
-  const cardWidth = 280;
+  const cardWidth = 340;
   const cardHeight = Math.round(cardWidth * (FRAME.height / FRAME.width));
 
   return new ImageResponse(
@@ -108,7 +108,7 @@ export default async function OGImage({ params }: { params: Promise<{ id: string
             gap: 16,
           }}
         >
-          {goalsWithImages.slice(0, 3).map((goal) => (
+          {goalsWithImages.slice(0, 2).map((goal) => (
             <div
               key={goal.id}
               style={{
@@ -121,7 +121,7 @@ export default async function OGImage({ params }: { params: Promise<{ id: string
             >
               {/* Frame overlay */}
               <img
-                src="https://www.agenticboard.xyz/frames/frame-7.png"
+                src="https://www.agenticboard.xyz/frames/frame-og.png"
                 style={{
                   position: "absolute",
                   top: 0,
