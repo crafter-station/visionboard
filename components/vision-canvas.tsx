@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, Link } from "lucide-react";
+import { Check, Link, RefreshCw, Trash2, ArrowLeft } from "lucide-react";
 import { ImageCard } from "@/components/image-card";
 import { Button } from "@/components/ui/button";
 import type { Goal } from "@/components/goal-input";
@@ -31,9 +31,18 @@ function getRandomRotation(id: string): number {
 interface VisionCanvasProps {
   boardId?: string;
   goals: Goal[];
+  onRegenerate?: (goalId: string) => void;
+  onDeleteGoal?: (goalId: string) => void;
+  onBack?: () => void;
 }
 
-export function VisionCanvas({ boardId, goals }: VisionCanvasProps) {
+export function VisionCanvas({
+  boardId,
+  goals,
+  onRegenerate,
+  onDeleteGoal,
+  onBack,
+}: VisionCanvasProps) {
   const [copied, setCopied] = useState(false);
 
   const rotations = useMemo(() => {
@@ -58,7 +67,15 @@ export function VisionCanvas({ boardId, goals }: VisionCanvasProps) {
   return (
     <div className="w-full space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Your Vision Board</h2>
+        <div className="flex items-center gap-4">
+          {onBack && (
+            <Button variant="ghost" size="sm" onClick={onBack} className="gap-2">
+              <ArrowLeft className="size-4" />
+              Back
+            </Button>
+          )}
+          <h2 className="text-lg font-semibold">Your Vision Board</h2>
+        </div>
         {boardId && allGenerated && (
           <Button
             variant="outline"
@@ -87,7 +104,7 @@ export function VisionCanvas({ boardId, goals }: VisionCanvasProps) {
           return (
             <div
               key={goal.id}
-              className="transition-transform hover:scale-105"
+              className="relative group"
               style={{
                 aspectRatio: "1618 / 2001",
                 transform: `rotate(${rotation}deg)`,
@@ -99,6 +116,36 @@ export function VisionCanvas({ boardId, goals }: VisionCanvasProps) {
                 isLoading={goal.isGenerating}
                 title={goal.title}
               />
+              {goal.generatedImageUrl && !goal.isGenerating && (onRegenerate || onDeleteGoal) && (
+                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {onRegenerate && (
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="size-8"
+                      onClick={() => onRegenerate(goal.id)}
+                      title="Regenerate image"
+                    >
+                      <RefreshCw className="size-4" />
+                    </Button>
+                  )}
+                  {onDeleteGoal && (
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="size-8"
+                      onClick={() => {
+                        if (confirm("Delete this goal?")) {
+                          onDeleteGoal(goal.id);
+                        }
+                      }}
+                      title="Delete goal"
+                    >
+                      <Trash2 className="size-4 text-destructive" />
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}

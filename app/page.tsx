@@ -5,6 +5,7 @@ import { GoalInput } from "@/components/goal-input";
 import { VisionCanvas } from "@/components/vision-canvas";
 import { SponsorFooter } from "@/components/sponsor-footer";
 import { GithubBadge } from "@/components/github-badge";
+import { ExistingBoards } from "@/components/existing-boards";
 import { useVisionBoard } from "@/hooks/use-vision-board";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
@@ -13,16 +14,25 @@ export default function Home() {
   const {
     visitorId,
     isLoadingFingerprint,
+    isLoadingBoards,
     boardData,
     goals,
     setGoals,
     step,
     isGenerating,
+    existingBoards,
+    limits,
+    usage,
     onUploadComplete,
     generateAllImages,
+    regenerateGoalImage,
+    deleteGoal,
+    deleteBoard,
+    loadExistingBoard,
+    resetToUpload,
   } = useVisionBoard();
 
-  if (isLoadingFingerprint) {
+  if (isLoadingFingerprint || isLoadingBoards) {
     return (
       <main className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -32,6 +42,8 @@ export default function Home() {
       </main>
     );
   }
+
+  const canCreateNewBoard = !limits || !usage || usage.boards < limits.MAX_BOARDS_PER_USER;
 
   return (
     <main className="min-h-screen bg-background flex flex-col">
@@ -56,57 +68,78 @@ export default function Home() {
             <div className="flex items-center gap-4">
               <GithubBadge />
               <div className="flex items-center gap-2">
-              {["upload", "goals", "board"].map((s, i) => (
-                <div
-                  key={s}
-                  className={cn(
-                    "flex items-center gap-2 text-sm",
-                    step === s
-                      ? "text-foreground font-medium"
-                      : "text-muted-foreground"
-                  )}
-                >
-                  <span
+                {["upload", "goals", "board"].map((s, i) => (
+                  <div
+                    key={s}
                     className={cn(
-                      "size-6 flex items-center justify-center text-xs border",
+                      "flex items-center gap-2 text-sm",
                       step === s
-                        ? "bg-foreground text-background"
-                        : "bg-transparent"
+                        ? "text-foreground font-medium"
+                        : "text-muted-foreground"
                     )}
                   >
-                    {i + 1}
-                  </span>
-                  <span className="hidden sm:inline capitalize">{s}</span>
-                </div>
-              ))}
+                    <span
+                      className={cn(
+                        "size-6 flex items-center justify-center text-xs border",
+                        step === s
+                          ? "bg-foreground text-background"
+                          : "bg-transparent"
+                      )}
+                    >
+                      {i + 1}
+                    </span>
+                    <span className="hidden sm:inline capitalize">{s}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-12">
+      <div className="container mx-auto px-4 py-12 flex-1">
         {step === "upload" && (
-          <div className="max-w-4xl mx-auto space-y-8">
-            <div className="flex justify-center">
-              <img
-                src="/brand/hero-Image.png"
-                alt="Vision Board AI"
-                className="w-full max-w-2xl h-auto object-contain"
+          <div className="max-w-4xl mx-auto space-y-12">
+            {existingBoards.length > 0 && (
+              <ExistingBoards
+                boards={existingBoards}
+                onSelectBoard={loadExistingBoard}
+                onDeleteBoard={deleteBoard}
+                limits={limits}
+                usage={usage}
               />
-            </div>
-            <div className="max-w-2xl mx-auto space-y-8">
-              <div className="text-center space-y-2">
-                <h2 className="text-3xl font-bold tracking-tight">
-                  Start with Your Photo
-                </h2>
+            )}
+
+            {canCreateNewBoard ? (
+              <>
+                <div className="flex justify-center">
+                  <img
+                    src="/brand/hero-Image.png"
+                    alt="Vision Board AI"
+                    className="w-full max-w-2xl h-auto object-contain"
+                  />
+                </div>
+                <div className="max-w-2xl mx-auto space-y-8">
+                  <div className="text-center space-y-2">
+                    <h2 className="text-3xl font-bold tracking-tight">
+                      {existingBoards.length > 0 ? "Create Another Board" : "Start with Your Photo"}
+                    </h2>
+                    <p className="text-muted-foreground">
+                      Upload a photo of yourself. We will remove the background and use
+                      it to place you in your dream scenarios.
+                    </p>
+                  </div>
+                  <PhotoUpload visitorId={visitorId} onUploadComplete={onUploadComplete} />
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-8">
                 <p className="text-muted-foreground">
-                  Upload a photo of yourself. We will remove the background and use
-                  it to place you in your dream scenarios.
+                  You have reached the maximum of {limits?.MAX_BOARDS_PER_USER} boards.
+                  Delete an existing board to create a new one.
                 </p>
               </div>
-              <PhotoUpload visitorId={visitorId} onUploadComplete={onUploadComplete} />
-            </div>
+            )}
           </div>
         )}
 
@@ -128,6 +161,7 @@ export default function Home() {
               onGoalsChange={setGoals}
               onGenerate={generateAllImages}
               isGenerating={isGenerating}
+              maxGoals={limits?.MAX_GOALS_PER_BOARD}
             />
           </div>
         )}
@@ -136,6 +170,9 @@ export default function Home() {
           <VisionCanvas
             boardId={boardData?.boardId}
             goals={goals}
+            onRegenerate={regenerateGoalImage}
+            onDeleteGoal={deleteGoal}
+            onBack={resetToUpload}
           />
         )}
       </div>

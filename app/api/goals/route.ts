@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createGoal, deleteGoal, getVisionBoard } from "@/db/queries";
+import { createGoal, deleteGoal, getVisionBoard, countGoalsByBoard, LIMITS } from "@/db/queries";
 import { validateRequest } from "@/lib/auth";
 
 export async function POST(request: Request) {
@@ -24,6 +24,14 @@ export async function POST(request: Request) {
   if (title.length > 200) {
     return NextResponse.json(
       { error: "Goal title too long. Max 200 characters" },
+      { status: 400 }
+    );
+  }
+
+  const goalCount = await countGoalsByBoard(boardId);
+  if (goalCount >= LIMITS.MAX_GOALS_PER_BOARD) {
+    return NextResponse.json(
+      { error: `Maximum ${LIMITS.MAX_GOALS_PER_BOARD} goals per board allowed` },
       { status: 400 }
     );
   }

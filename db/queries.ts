@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql, and, isNotNull } from "drizzle-orm";
 import { db } from ".";
 import {
   visionBoards,
@@ -8,6 +8,12 @@ import {
   type Goal,
 } from "./schema";
 import { generateBoardId, generateGoalId } from "@/lib/id";
+
+export const LIMITS = {
+  MAX_BOARDS_PER_USER: 2,
+  MAX_GOALS_PER_BOARD: 4,
+  MAX_PHOTOS_PER_USER: 8,
+} as const;
 
 export async function createVisionBoard(data: Omit<NewVisionBoard, "id">) {
   const id = generateBoardId();
@@ -25,6 +31,50 @@ export async function getVisionBoard(id: string) {
       goals: true,
     },
   });
+}
+
+export async function getVisionBoardsByVisitor(visitorId: string) {
+  return db.query.visionBoards.findMany({
+    where: eq(visionBoards.visitorId, visitorId),
+    with: {
+      goals: true,
+    },
+    orderBy: (boards, { desc }) => [desc(boards.createdAt)],
+  });
+}
+
+export async function countBoardsByVisitor(visitorId: string): Promise<number> {
+  const result = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(visionBoards)
+    .where(eq(visionBoards.visitorId, visitorId));
+  return Number(result[0]?.count ?? 0);
+}
+
+export async function countGoalsByBoard(boardId: string): Promise<number> {
+  const result = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(goals)
+    .where(eq(goals.boardId, boardId));
+  return Number(result[0]?.count ?? 0);
+}
+
+export async function countGeneratedPhotosByVisitor(visitorId: string): Promise<number> {
+  const result = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(goals)
+    .innerJoin(visionBoards, eq(goals.boardId, visionBoards.id))
+    .where(
+      and(
+        eq(visionBoards.visitorId, visitorId),
+        isNotNull(goals.generatedImageUrl)
+      )
+    );
+  return Number(result[0]?.count ?? 0);
+}
+
+export async function deleteVisionBoard(id: string) {
+  await db.delete(visionBoards).where(eq(visionBoards.id, id));
 }
 
 export async function createGoal(data: Omit<NewGoal, "id">) {

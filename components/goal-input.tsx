@@ -19,7 +19,6 @@ const PREFILLED_GOALS = [
   "Go to the gym regularly",
   "Read more books",
   "Learn a new skill",
-  "Save money for...",
 ];
 
 interface GoalInputProps {
@@ -27,6 +26,7 @@ interface GoalInputProps {
   onGoalsChange: (goals: Goal[]) => void;
   onGenerate: () => void;
   isGenerating: boolean;
+  maxGoals?: number;
 }
 
 export function GoalInput({
@@ -34,11 +34,14 @@ export function GoalInput({
   onGoalsChange,
   onGenerate,
   isGenerating,
+  maxGoals = 4,
 }: GoalInputProps) {
   const [newGoal, setNewGoal] = useState("");
 
+  const canAddMore = goals.length < maxGoals;
+
   const addGoal = (title: string) => {
-    if (!title.trim()) return;
+    if (!title.trim() || !canAddMore) return;
     const goal: Goal = {
       id: crypto.randomUUID(),
       title: title.trim(),
@@ -56,7 +59,8 @@ export function GoalInput({
   };
 
   const addPrefilled = () => {
-    const prefilledGoals: Goal[] = PREFILLED_GOALS.map((title) => ({
+    const goalsToAdd = PREFILLED_GOALS.slice(0, maxGoals - goals.length);
+    const prefilledGoals: Goal[] = goalsToAdd.map((title) => ({
       id: crypto.randomUUID(),
       title,
     }));
@@ -68,7 +72,7 @@ export function GoalInput({
       <div className="text-center space-y-2">
         <h2 className="text-2xl font-bold tracking-tight">Define Your 2026 Goals</h2>
         <p className="text-muted-foreground">
-          What do you want to achieve? Be specific and dream big.
+          What do you want to achieve? Add up to {maxGoals} goals.
         </p>
       </div>
 
@@ -116,23 +120,31 @@ export function GoalInput({
         ))}
       </div>
 
-      <div className="flex gap-3">
-        <Input
-          value={newGoal}
-          onChange={(e) => setNewGoal(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && addGoal(newGoal)}
-          placeholder="Add another goal..."
-          className="flex-1"
-        />
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => addGoal(newGoal)}
-          disabled={!newGoal.trim()}
-        >
-          <Plus className="size-4" />
-        </Button>
-      </div>
+      {canAddMore && (
+        <div className="flex gap-3">
+          <Input
+            value={newGoal}
+            onChange={(e) => setNewGoal(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addGoal(newGoal)}
+            placeholder="Add another goal..."
+            className="flex-1"
+          />
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => addGoal(newGoal)}
+            disabled={!newGoal.trim()}
+          >
+            <Plus className="size-4" />
+          </Button>
+        </div>
+      )}
+
+      {!canAddMore && (
+        <p className="text-sm text-muted-foreground text-center">
+          Maximum {maxGoals} goals reached
+        </p>
+      )}
 
       {goals.length > 0 && (
         <Button
@@ -148,7 +160,7 @@ export function GoalInput({
           ) : (
             <>
               <Sparkles className="size-4 mr-2" />
-              Generate Vision Board
+              Generate Vision Board ({goals.length}/{maxGoals} goals)
             </>
           )}
         </Button>
@@ -156,4 +168,3 @@ export function GoalInput({
     </div>
   );
 }
-

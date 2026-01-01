@@ -2,12 +2,15 @@ import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { generateImageWithUser } from "@/lib/fal";
 import { validateRequest } from "@/lib/auth";
-import { updateGoal } from "@/db/queries";
+import { updateGoal, countGeneratedPhotosByVisitor, LIMITS } from "@/db/queries";
+import { db } from "@/db";
+import { goals, visionBoards } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 export async function POST(request: Request) {
-  const { success, error, remaining } = await validateRequest("image-gen");
+  const { success, visitorId, error, remaining } = await validateRequest("image-gen");
 
-  if (!success) {
+  if (!success || !visitorId) {
     return NextResponse.json(
       { error: error || "Unauthorized", remaining },
       { status: 429 }
@@ -21,6 +24,31 @@ export async function POST(request: Request) {
       { error: "Missing required fields" },
       { status: 400 }
     );
+  }
+
+  const existingGoal = await db.query.goals.findFirst({
+    where: eq(goals.id, goalId),
+    with: { board: true },
+  });
+
+  if (!existingGoal) {
+    return NextResponse.json({ error: "Goal not found" }, { status: 404 });
+  }
+
+  if (existingGoal.board.visitorId !== visitorId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  }
+
+  const isRegeneration = !!existingGoal.generatedImageUrl;
+
+  if (!isRegeneration) {
+    const photoCount = await countGeneratedPhotosByVisitor(visitorId);
+    if (photoCount >= LIMITS.MAX_PHOTOS_PER_USER) {
+      return NextResponse.json(
+        { error: `Maximum ${LIMITS.MAX_PHOTOS_PER_USER} generated photos allowed. Delete some goals to generate new ones.` },
+        { status: 400 }
+      );
+    }
   }
 
   const generatedUrl = await generateImageWithUser(userImageUrl, goalPrompt);

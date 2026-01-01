@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { removeBackground } from "@/lib/fal";
-import { createVisionBoard } from "@/db/queries";
+import { createVisionBoard, countBoardsByVisitor, LIMITS } from "@/db/queries";
 import { validateRequest } from "@/lib/auth";
 
 export async function POST(request: Request) {
@@ -11,6 +11,14 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: error || "Unauthorized" },
       { status: success ? 400 : 429, headers: remaining ? { "X-RateLimit-Remaining": String(remaining) } : {} }
+    );
+  }
+
+  const boardCount = await countBoardsByVisitor(visitorId);
+  if (boardCount >= LIMITS.MAX_BOARDS_PER_USER) {
+    return NextResponse.json(
+      { error: `Maximum ${LIMITS.MAX_BOARDS_PER_USER} boards allowed. Delete an existing board to create a new one.` },
+      { status: 400 }
     );
   }
 
