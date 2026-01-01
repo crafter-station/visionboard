@@ -11,6 +11,7 @@ const dmMono = DM_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.agenticboard.xyz"),
   title: "Agentic Vision Board",
   description: "Create your 2026 vision board with AI-generated images",
   icons: {
