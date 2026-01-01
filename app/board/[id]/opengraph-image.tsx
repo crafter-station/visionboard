@@ -121,6 +121,18 @@ export default async function OGImage({ params }: { params: Promise<{ id: string
                 transform: `rotate(${getRandomRotation(goal.id)}deg)`,
               }}
             >
+              {/* Frame overlay */}
+              <img
+                src="https://www.agenticboard.xyz/frames/frame-7.png"
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
+                }}
+              />
               {goal.generatedImageUrl && (
                 <div
                   style={{
