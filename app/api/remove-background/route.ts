@@ -5,7 +5,7 @@ import { createVisionBoard } from "@/db/queries";
 import { validateRequest } from "@/lib/auth";
 
 export async function POST(request: Request) {
-  const { success, visitorId, error, remaining } = await validateRequest();
+  const { success, visitorId, error, remaining } = await validateRequest("bg-removal");
 
   if (!success || !visitorId) {
     return NextResponse.json(

@@ -1,7 +1,17 @@
 import { NextResponse } from "next/server";
 import { updateGoalPositions } from "@/db/queries";
+import { validateRequest } from "@/lib/auth";
 
 export async function POST(request: Request) {
+  const { success, error, remaining } = await validateRequest("general");
+
+  if (!success) {
+    return NextResponse.json(
+      { error: error || "Unauthorized" },
+      { status: 429, headers: remaining ? { "X-RateLimit-Remaining": String(remaining) } : {} }
+    );
+  }
+
   const { positions } = await request.json();
 
   if (!positions || !Array.isArray(positions)) {
@@ -15,4 +25,3 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ success: true });
 }
-

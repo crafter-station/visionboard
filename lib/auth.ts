@@ -1,12 +1,12 @@
 import { headers } from "next/headers";
-import { checkRateLimit } from "./rate-limit";
+import { checkRateLimit, type RateLimitType } from "./rate-limit";
 
 export async function getVisitorId(): Promise<string | null> {
   const headersList = await headers();
   return headersList.get("x-visitor-id");
 }
 
-export async function validateRequest(): Promise<{
+export async function validateRequest(rateLimitType: RateLimitType = "general"): Promise<{
   success: boolean;
   visitorId: string | null;
   error?: string;
@@ -22,7 +22,7 @@ export async function validateRequest(): Promise<{
     };
   }
 
-  const { success, remaining } = await checkRateLimit(visitorId);
+  const { success, remaining } = await checkRateLimit(visitorId, rateLimitType);
 
   if (!success) {
     return {
@@ -35,4 +35,3 @@ export async function validateRequest(): Promise<{
 
   return { success: true, visitorId, remaining };
 }
-

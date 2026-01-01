@@ -1,12 +1,29 @@
 import { NextResponse } from "next/server";
 import { createGoal, deleteGoal, getVisionBoard } from "@/db/queries";
+import { validateRequest } from "@/lib/auth";
 
 export async function POST(request: Request) {
+  const { success, error, remaining } = await validateRequest("goals");
+
+  if (!success) {
+    return NextResponse.json(
+      { error: error || "Unauthorized" },
+      { status: 429, headers: remaining ? { "X-RateLimit-Remaining": String(remaining) } : {} }
+    );
+  }
+
   const { boardId, title } = await request.json();
 
   if (!boardId || !title) {
     return NextResponse.json(
       { error: "Missing required fields" },
+      { status: 400 }
+    );
+  }
+
+  if (title.length > 200) {
+    return NextResponse.json(
+      { error: "Goal title too long. Max 200 characters" },
       { status: 400 }
     );
   }
@@ -17,6 +34,15 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const { success, error, remaining } = await validateRequest("goals");
+
+  if (!success) {
+    return NextResponse.json(
+      { error: error || "Unauthorized" },
+      { status: 429, headers: remaining ? { "X-RateLimit-Remaining": String(remaining) } : {} }
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const goalId = searchParams.get("id");
 
@@ -54,4 +80,3 @@ export async function GET(request: Request) {
 
   return NextResponse.json(board.goals);
 }
-

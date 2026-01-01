@@ -5,7 +5,7 @@ import { validateRequest } from "@/lib/auth";
 import { updateGoal } from "@/db/queries";
 
 export async function POST(request: Request) {
-  const { success, error, remaining } = await validateRequest();
+  const { success, error, remaining } = await validateRequest("image-gen");
 
   if (!success) {
     return NextResponse.json(

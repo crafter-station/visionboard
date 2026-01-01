@@ -54,7 +54,7 @@ export function useVisionBoard() {
   const [boardData, setBoardData] = useState<BoardData | null>(null);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
-  const [step, setStep] = useState<"upload" | "goals" | "canvas">("upload");
+  const [step, setStep] = useState<"upload" | "goals" | "board">("upload");
 
   const uploadMutation = useMutation({
     mutationFn: async (data: BoardData) => {
@@ -121,7 +121,7 @@ export function useVisionBoard() {
   const generateAllImages = useCallback(async () => {
     if (!boardData) return;
 
-    setStep("canvas");
+    setStep("board");
 
     const savedGoals = await Promise.all(
       goals.map(async (goal) => {

@@ -3,6 +3,8 @@
 import { PhotoUpload } from "@/components/photo-upload";
 import { GoalInput } from "@/components/goal-input";
 import { VisionCanvas } from "@/components/vision-canvas";
+import { SponsorFooter } from "@/components/sponsor-footer";
+import { GithubBadge } from "@/components/github-badge";
 import { useVisionBoard } from "@/hooks/use-vision-board";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
@@ -14,12 +16,10 @@ export default function Home() {
     boardData,
     goals,
     setGoals,
-    positions,
     step,
     isGenerating,
     onUploadComplete,
     generateAllImages,
-    handlePositionChange,
   } = useVisionBoard();
 
   if (isLoadingFingerprint) {
@@ -34,12 +34,12 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-screen bg-background flex flex-col">
       <header className="border-b">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              {step === "canvas" && boardData?.noBgUrl && (
+              {step === "board" && boardData?.noBgUrl && (
                 <div className="size-12 rounded-full overflow-hidden border-2 border-foreground bg-muted flex-shrink-0">
                   <img
                     src={boardData.noBgUrl}
@@ -49,12 +49,14 @@ export default function Home() {
                 </div>
               )}
               <div>
-                <h1 className="text-2xl font-bold tracking-tight">Vision Board</h1>
+                <h1 className="text-2xl font-bold tracking-tight">Agentic Vision Board</h1>
                 <p className="text-sm text-muted-foreground">2026 Edition</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              {["upload", "goals", "canvas"].map((s, i) => (
+            <div className="flex items-center gap-4">
+              <GithubBadge />
+              <div className="flex items-center gap-2">
+              {["upload", "goals", "board"].map((s, i) => (
                 <div
                   key={s}
                   className={cn(
@@ -77,6 +79,7 @@ export default function Home() {
                   <span className="hidden sm:inline capitalize">{s}</span>
                 </div>
               ))}
+              </div>
             </div>
           </div>
         </div>
@@ -129,15 +132,15 @@ export default function Home() {
           </div>
         )}
 
-        {step === "canvas" && (
+        {step === "board" && (
           <VisionCanvas
             boardId={boardData?.boardId}
             goals={goals}
-            positions={positions}
-            onPositionChange={handlePositionChange}
           />
         )}
       </div>
+
+      <SponsorFooter />
     </main>
   );
 }

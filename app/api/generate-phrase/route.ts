@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 import { generatePhrase } from "@/lib/openai";
 import { updateGoal } from "@/db/queries";
-import { getVisitorId } from "@/lib/auth";
+import { validateRequest } from "@/lib/auth";
 
 export async function POST(request: Request) {
-  const visitorId = await getVisitorId();
+  const { success, error, remaining } = await validateRequest("general");
 
-  if (!visitorId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!success) {
+    return NextResponse.json(
+      { error: error || "Unauthorized" },
+      { status: 429, headers: remaining ? { "X-RateLimit-Remaining": String(remaining) } : {} }
+    );
   }
 
   const { goalId, goalTitle } = await request.json();
