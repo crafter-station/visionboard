@@ -10,19 +10,26 @@ import type { Goal } from "@/components/goal-input";
 
 const FRAME_RATIO = 1618 / 2001;
 
-function seededRandom(seed: string): number {
+const ROTATION_CONFIG = {
+  min: -9,
+  max: 14,
+} as const;
+
+function generateSeededRandom(seed: string): number {
   let hash = 0;
   for (let i = 0; i < seed.length; i++) {
     const char = seed.charCodeAt(i);
     hash = ((hash << 5) - hash) + char;
     hash = hash & hash;
   }
-  return Math.abs(hash % 1000) / 1000;
+  return Math.abs(hash % 10000) / 10000;
 }
 
-function getRandomAngle(goalId: string): number {
-  const random = seededRandom(goalId);
-  return -14 + random * 35;
+function getRandomRotation(id: string): number {
+  const { min, max } = ROTATION_CONFIG;
+  const range = max - min;
+  const random = generateSeededRandom(id);
+  return min + random * range;
 }
 
 interface Position {
@@ -49,10 +56,10 @@ export function VisionCanvas({
   const canvasRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
 
-  const angles = useMemo(() => {
+  const rotations = useMemo(() => {
     const map: Record<string, number> = {};
     goals.forEach((goal) => {
-      map[goal.id] = getRandomAngle(goal.id);
+      map[goal.id] = getRandomRotation(goal.id);
     });
     return map;
   }, [goals]);
@@ -158,7 +165,7 @@ export function VisionCanvas({
       >
         {goals.map((goal, index) => {
           const pos = getPosition(goal.id, index);
-          const angle = angles[goal.id] || 0;
+          const rotation = rotations[goal.id] ?? 0;
 
           return (
             <Rnd
@@ -189,7 +196,7 @@ export function VisionCanvas({
                 "shadow-lg transition-shadow hover:shadow-xl",
                 "cursor-move"
               )}
-              style={{ transform: `rotate(${angle}deg)` }}
+              style={{ transform: `rotate(${rotation}deg)` }}
               resizeHandleStyles={{
                 bottomRight: {
                   width: 20,
