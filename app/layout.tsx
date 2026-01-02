@@ -18,11 +18,24 @@ export const metadata: Metadata = {
     icon: "/brand/favicon.png",
     apple: "/brand/favicon.png",
   },
+  other: {
+    "og:logo": "https://www.agenticboard.xyz/brand/favicon.png",
+  },
   openGraph: {
     title: "Agentic Vision Board",
     description: "Create your 2026 vision board with AI-generated images",
-    images: ["/brand/og_vb.png"],
+    url: "https://www.agenticboard.xyz",
+    siteName: "Agentic Vision Board",
+    images: [
+      {
+        url: "/brand/og_vb.png",
+        width: 1200,
+        height: 630,
+        alt: "Agentic Vision Board - Create your 2026 vision board with AI",
+      },
+    ],
     type: "website",
+    locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
