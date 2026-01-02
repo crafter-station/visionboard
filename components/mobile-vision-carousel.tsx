@@ -54,7 +54,7 @@ export function MobileVisionCarousel({
 
   const handleShare = async () => {
     if (!boardId) return;
-    const url = `${window.location.origin}/board/${boardId}`;
+    const url = `${window.location.origin}/b/${boardId}`;
     await navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);

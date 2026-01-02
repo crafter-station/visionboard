@@ -3,6 +3,7 @@
 import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { Rnd } from "react-rnd";
 import { Check, Link, RefreshCw, Trash2, ArrowLeft } from "lucide-react";
+import { useTheme } from "next-themes";
 import { ImageCard } from "@/components/image-card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -57,11 +58,19 @@ export function VisionCanvas({
   onBack,
   onSavePositions,
 }: VisionCanvasProps) {
+  const { resolvedTheme } = useTheme();
   const isMobile = useIsMobile();
+  const [mounted, setMounted] = useState(false);
   const [copied, setCopied] = useState(false);
   const [positions, setPositions] = useState<Position[]>([]);
   const canvasRef = useRef<HTMLDivElement>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isDark = mounted && resolvedTheme === "dark";
 
   const rotations = useMemo(() => {
     const map: Record<string, number> = {};
@@ -150,7 +159,7 @@ export function VisionCanvas({
   const handleShare = async () => {
     if (!boardId) return;
 
-    const url = `${window.location.origin}/board/${boardId}`;
+    const url = `${window.location.origin}/b/${boardId}`;
     await navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -212,13 +221,17 @@ export function VisionCanvas({
       <div
         ref={canvasRef}
         className="relative w-full min-h-[600px] rounded-lg overflow-hidden"
-        style={{
-          height: "calc(100vh - 250px)",
-          backgroundImage: "url(/bg/white-background.png)",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
+        style={{ height: "calc(100vh - 250px)" }}
       >
+        <div
+          className="absolute inset-0 -z-10"
+          style={{
+            backgroundImage: "url(/bg/white-background.png)",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            filter: isDark ? "invert(1) hue-rotate(180deg)" : undefined,
+          }}
+        />
         {goals.map((goal, index) => {
           const pos = getPosition(goal.id, index);
           const rotation = rotations[goal.id] ?? 0;

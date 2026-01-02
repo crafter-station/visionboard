@@ -3,6 +3,7 @@ import { getVisionBoard } from "@/db/queries";
 import { ShareCanvas } from "@/components/share-canvas";
 import { SponsorFooter } from "@/components/sponsor-footer";
 import { GithubBadge } from "@/components/github-badge";
+import { ThemeSwitcherButton } from "@/components/elements/theme-switcher-button";
 import type { Metadata } from "next";
 
 interface Props {
@@ -28,6 +29,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title,
       description,
       type: "website",
+      url: `https://www.agenticboard.xyz/b/${id}`,
     },
     twitter: {
       card: "summary_large_image",
@@ -55,13 +57,14 @@ export default async function BoardPage({ params }: Props) {
               <p className="text-sm text-muted-foreground">2026 Edition</p>
             </div>
             <div className="flex items-center gap-4">
+              <ThemeSwitcherButton />
               <GithubBadge />
-            <a
-              href="/"
-              className="text-sm font-medium hover:underline underline-offset-4"
-            >
-              Create your own
-            </a>
+              <a
+                href="/"
+                className="text-sm font-medium hover:underline underline-offset-4"
+              >
+                Create your own
+              </a>
             </div>
           </div>
         </div>
@@ -75,4 +78,3 @@ export default async function BoardPage({ params }: Props) {
     </main>
   );
 }
-
