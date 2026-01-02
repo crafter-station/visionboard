@@ -47,15 +47,12 @@ export async function GET(request: Request) {
 
     const profile = await getOrCreateProfile({ userId });
 
-    const orderId = checkout.orders?.[0]?.id;
-    if (orderId) {
-      await addCredits(
-        profile.id,
-        LIMITS.PAID_CREDITS_PER_PURCHASE,
-        orderId,
-        checkout.customerId ?? undefined
-      );
-    }
+    await addCredits(
+      profile.id,
+      LIMITS.PAID_CREDITS_PER_PURCHASE,
+      checkoutId,
+      checkout.customerId ?? undefined
+    );
 
     const credits = await getCreditsForProfile(profile.id);
     const limits = getUserLimits(credits);
