@@ -338,6 +338,33 @@ export function useVisionBoard() {
     setStep("upload");
   }, []);
 
+  const createBoardWithExistingPhoto = useCallback(async () => {
+    if (!boardsData?.boards.length || !visitorId) return;
+
+    const latestBoard = boardsData.boards[0];
+
+    const res = await fetch("/api/boards", {
+      method: "POST",
+      headers: createAuthHeaders(visitorId),
+      body: JSON.stringify({ reusePhotoFrom: latestBoard.id }),
+    });
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || "Failed to create board");
+    }
+
+    const data = await res.json();
+    setBoardData({
+      boardId: data.boardId,
+      originalUrl: data.originalUrl,
+      noBgUrl: data.noBgUrl,
+    });
+    setGoals([]);
+    setStep("goals");
+    queryClient.invalidateQueries({ queryKey: ["boards", visitorId] });
+  }, [boardsData, visitorId, queryClient]);
+
   const savePositions = useCallback(
     async (positions: Array<{ id: string; x: number; y: number; width: number; height: number }>) => {
       try {
@@ -376,5 +403,6 @@ export function useVisionBoard() {
     loadExistingBoard,
     resetToUpload,
     savePositions,
+    createBoardWithExistingPhoto,
   };
 }
