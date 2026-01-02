@@ -1,5 +1,6 @@
 "use client";
 
+import { SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 import { PhotoUpload } from "@/components/photo-upload";
 import { GoalInput } from "@/components/goal-input";
 import { VisionCanvas } from "@/components/vision-canvas";
@@ -7,14 +8,16 @@ import { SponsorFooter } from "@/components/sponsor-footer";
 import { GithubBadge } from "@/components/github-badge";
 import { ExistingBoards } from "@/components/existing-boards";
 import { ThemeSwitcherButton } from "@/components/elements/theme-switcher-button";
+import { Button } from "@/components/ui/button";
 import { useVisionBoard } from "@/hooks/use-vision-board";
 import { cn } from "@/lib/utils";
-import { Loader2 } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 
 export default function Home() {
   const {
     visitorId,
-    isLoadingFingerprint,
+    isAuthenticated,
+    isLoadingAuth,
     isLoadingBoards,
     boardData,
     goals,
@@ -35,7 +38,7 @@ export default function Home() {
     createBoardWithExistingPhoto,
   } = useVisionBoard();
 
-  if (isLoadingFingerprint || isLoadingBoards) {
+  if (isLoadingAuth || isLoadingBoards) {
     return (
       <main className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -48,6 +51,7 @@ export default function Home() {
 
   const canCreateNewBoard = !limits || !usage || usage.boards < limits.MAX_BOARDS_PER_USER;
   const hasExistingBoards = existingBoards.length > 0;
+  const hasReachedLimit = hasExistingBoards && !canCreateNewBoard;
 
   return (
     <main className="min-h-screen bg-background flex flex-col">
@@ -74,6 +78,31 @@ export default function Home() {
             <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
               <ThemeSwitcherButton />
               <GithubBadge />
+              
+              {isAuthenticated ? (
+                <UserButton 
+                  afterSignOutUrl="/"
+                  appearance={{
+                    elements: {
+                      avatarBox: "size-8 sm:size-9"
+                    }
+                  }}
+                />
+              ) : (
+                <div className="flex items-center gap-2">
+                  <SignInButton mode="modal">
+                    <Button variant="ghost" size="sm" className="hidden sm:inline-flex">
+                      Sign In
+                    </Button>
+                  </SignInButton>
+                  <SignUpButton mode="modal">
+                    <Button size="sm">
+                      Sign Up
+                    </Button>
+                  </SignUpButton>
+                </div>
+              )}
+
               <div className="flex items-center gap-1 sm:gap-2">
                 {["upload", "goals", "board"].map((s, i) => (
                   <div
@@ -142,12 +171,36 @@ export default function Home() {
               </>
             )}
 
-            {hasExistingBoards && !canCreateNewBoard && (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">
-                  You have reached the maximum of {limits?.MAX_BOARDS_PER_USER} boards.
-                  Delete an existing board to create a new one.
-                </p>
+            {hasReachedLimit && (
+              <div className="border-2 border-dashed rounded-lg p-6 sm:p-8 text-center space-y-4">
+                <div className="flex justify-center">
+                  <div className="size-12 rounded-full bg-muted flex items-center justify-center">
+                    <Sparkles className="size-6" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold">
+                    {isAuthenticated ? "Upgrade for More Boards" : "Sign Up for More Boards"}
+                  </h3>
+                  <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                    You have reached the limit of {limits?.MAX_BOARDS_PER_USER} board{limits?.MAX_BOARDS_PER_USER === 1 ? '' : 's'}.
+                    {isAuthenticated 
+                      ? " Upgrade your account to create unlimited vision boards."
+                      : " Sign up and upgrade to create more vision boards."}
+                  </p>
+                </div>
+                {isAuthenticated ? (
+                  // TODO: Polar - Link to payment/upgrade page
+                  <Button disabled>
+                    Upgrade Coming Soon
+                  </Button>
+                ) : (
+                  <SignUpButton mode="modal">
+                    <Button>
+                      Sign Up to Continue
+                    </Button>
+                  </SignUpButton>
+                )}
               </div>
             )}
           </div>
