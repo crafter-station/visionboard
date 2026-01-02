@@ -15,6 +15,13 @@
       "when": 1735862400000,
       "tag": "0001_add_user_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1735948800000,
+      "tag": "0002_add_goal_status",
+      "breakpoints": true
     }
   ]
 }

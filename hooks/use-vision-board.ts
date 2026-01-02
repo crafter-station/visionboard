@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import type { Goal } from "@/components/goal-input";
 import { useAuth } from "./use-auth";
 import type { VisionBoard, Goal as DBGoalType } from "@/db/schema";
@@ -94,6 +94,50 @@ export function useVisionBoard() {
       refetchBoards();
     }
   }, [hasMigrated, refetchBoards]);
+
+  const goalsRef = useRef(goals);
+  goalsRef.current = goals;
+
+  const generatingGoalIds = goals
+    .filter((g) => g.status === "generating" || g.status === "pending")
+    .map((g) => g.id)
+    .sort()
+    .join(",");
+
+  useEffect(() => {
+    if (!generatingGoalIds || !boardData?.boardId) return;
+
+    const intervalId = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/goals?boardId=${boardData.boardId}`, {
+          headers: createAuthHeaders(visitorId),
+        });
+        if (!res.ok) return;
+
+        const updatedGoals = await res.json();
+        setGoals((prev) =>
+          prev.map((g) => {
+            const updated = updatedGoals.find((u: DBGoalType) => u.id === g.id);
+            if (!updated) return g;
+            if (updated.status === "completed" || updated.status === "failed") {
+              return {
+                ...g,
+                isGenerating: false,
+                generatedImageUrl: updated.generatedImageUrl ?? undefined,
+                phrase: updated.phrase ?? undefined,
+                status: updated.status,
+              };
+            }
+            return g;
+          })
+        );
+      } catch {
+        // Silently fail polling
+      }
+    }, 3000);
+
+    return () => clearInterval(intervalId);
+  }, [generatingGoalIds, boardData?.boardId, visitorId]);
 
   const uploadMutation = useMutation({
     mutationFn: async (data: { boardId: string; profileId: string; originalUrl: string; noBgUrl: string }) => {
@@ -196,7 +240,8 @@ export function useVisionBoard() {
         title: g.title,
         generatedImageUrl: g.generatedImageUrl ?? undefined,
         phrase: g.phrase ?? undefined,
-        isGenerating: false,
+        isGenerating: g.status === "generating" || g.status === "pending",
+        status: g.status,
       }))
     );
     setStep("gallery");
@@ -207,14 +252,17 @@ export function useVisionBoard() {
       if (!boardData?.avatarNoBgUrl) return;
 
       setIsAddingGoal(true);
+      let goalId: string | null = null;
 
       try {
         const dbGoal = await saveGoalToDatabase(boardData.boardId, title, visitorId);
+        goalId = dbGoal.id;
 
         const newGoal: Goal = {
           id: dbGoal.id,
           title,
           isGenerating: true,
+          status: "pending",
         };
 
         setGoals((prev) => [...prev, newGoal]);
@@ -239,6 +287,7 @@ export function useVisionBoard() {
                   isGenerating: false,
                   generatedImageUrl: imageResult.imageUrl,
                   phrase: phraseResult.phrase,
+                  status: "completed" as const,
                 }
               : g
           )
@@ -246,7 +295,13 @@ export function useVisionBoard() {
 
         queryClient.invalidateQueries({ queryKey });
       } catch (error) {
-        setGoals((prev) => prev.filter((g) => g.title !== title || !g.isGenerating));
+        if (goalId) {
+          setGoals((prev) =>
+            prev.map((g) =>
+              g.id === goalId ? { ...g, isGenerating: false, status: "failed" as const } : g
+            )
+          );
+        }
         throw error;
       } finally {
         setIsAddingGoal(false);
@@ -263,7 +318,7 @@ export function useVisionBoard() {
       if (!goal) return;
 
       setGoals((prev) =>
-        prev.map((g) => (g.id === goalId ? { ...g, isGenerating: true } : g))
+        prev.map((g) => (g.id === goalId ? { ...g, isGenerating: true, status: "generating" as const } : g))
       );
 
       try {
@@ -287,6 +342,7 @@ export function useVisionBoard() {
                   isGenerating: false,
                   generatedImageUrl: imageResult.imageUrl,
                   phrase: phraseResult.phrase,
+                  status: "completed" as const,
                 }
               : g
           )
@@ -295,7 +351,7 @@ export function useVisionBoard() {
         queryClient.invalidateQueries({ queryKey });
       } catch {
         setGoals((prev) =>
-          prev.map((g) => (g.id === goalId ? { ...g, isGenerating: false } : g))
+          prev.map((g) => (g.id === goalId ? { ...g, isGenerating: false, status: "failed" as const } : g))
         );
       }
     },

@@ -6,12 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
+export type GoalStatus = "pending" | "generating" | "completed" | "failed";
+
 export interface Goal {
   id: string;
   title: string;
   isGenerating?: boolean;
   generatedImageUrl?: string;
   phrase?: string;
+  status?: GoalStatus;
 }
 
 const PREFILLED_GOALS = [

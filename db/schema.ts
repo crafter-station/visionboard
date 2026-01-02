@@ -3,8 +3,16 @@ import {
   text,
   timestamp,
   integer,
+  pgEnum,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
+
+export const goalStatusEnum = pgEnum("goal_status", [
+  "pending",
+  "generating",
+  "completed",
+  "failed",
+]);
 
 export const userProfiles = pgTable("user_profiles", {
   id: text("id").primaryKey(),
@@ -32,6 +40,7 @@ export const goals = pgTable("goals", {
   title: text("title").notNull(),
   generatedImageUrl: text("generated_image_url"),
   phrase: text("phrase"),
+  status: goalStatusEnum("status").default("pending").notNull(),
   positionX: integer("position_x").default(0).notNull(),
   positionY: integer("position_y").default(0).notNull(),
   width: integer("width").default(300).notNull(),

@@ -1,7 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import { Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { VisionBoard, Goal } from "@/db/schema";
 
 interface ProfileData {
@@ -36,6 +45,8 @@ export function ExistingBoards({
   limits,
   usage,
 }: ExistingBoardsProps) {
+  const [boardToDelete, setBoardToDelete] = useState<string | null>(null);
+
   if (boards.length === 0) return null;
 
   const avatarUrl = profile?.avatarNoBgUrl;
@@ -113,9 +124,7 @@ export function ExistingBoards({
                     className="size-10 sm:size-9 flex-shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (confirm("Delete this board and all its goals?")) {
-                        onDeleteBoard(board.id);
-                      }
+                      setBoardToDelete(board.id);
                     }}
                   >
                     <Trash2 className="size-4 text-destructive" />
@@ -126,6 +135,33 @@ export function ExistingBoards({
           })}
         </div>
       </div>
+
+      <Dialog open={!!boardToDelete} onOpenChange={(open) => !open && setBoardToDelete(null)}>
+        <DialogContent className="sm:max-w-md rounded-lg">
+          <DialogHeader>
+            <DialogTitle>Delete Vision Board</DialogTitle>
+            <DialogDescription>
+              This will permanently delete this board and all its goals. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setBoardToDelete(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (boardToDelete) {
+                  onDeleteBoard(boardToDelete);
+                  setBoardToDelete(null);
+                }
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

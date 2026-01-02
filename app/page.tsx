@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, Suspense } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 import { PhotoUpload } from "@/components/photo-upload";
@@ -13,23 +13,97 @@ import { UpgradeCTA } from "@/components/upgrade-cta";
 import { ProBadge } from "@/components/ui/pro-badge";
 import { Button } from "@/components/ui/button";
 import { useVisionBoard } from "@/hooks/use-vision-board";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, CheckCircle } from "lucide-react";
 
-function CheckoutSuccessHandler({ onSuccess }: { onSuccess: () => void }) {
+function CheckoutVerificationHandler({
+  onVerified,
+  setIsVerifying,
+}: {
+  onVerified: () => void;
+  setIsVerifying: (v: boolean) => void;
+}) {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const [verificationStatus, setVerificationStatus] = useState<"idle" | "verifying" | "success" | "error">("idle");
 
   useEffect(() => {
-    if (searchParams.get("checkout") === "success") {
-      onSuccess();
-      router.replace("/");
-    }
-  }, [searchParams, onSuccess, router]);
+    const checkoutId = searchParams.get("checkout_id");
+    if (!checkoutId || verificationStatus !== "idle") return;
 
-  return null;
+    setVerificationStatus("verifying");
+    setIsVerifying(true);
+
+    const verifyCheckout = async () => {
+      try {
+        const res = await fetch(`/api/polar/verify?checkout_id=${checkoutId}`);
+        const data = await res.json();
+
+        if (data.verified) {
+          setVerificationStatus("success");
+          onVerified();
+          setTimeout(() => {
+            router.replace("/");
+          }, 1500);
+        } else {
+          setVerificationStatus("error");
+          setTimeout(() => {
+            router.replace("/");
+          }, 2000);
+        }
+      } catch {
+        setVerificationStatus("error");
+        setTimeout(() => {
+          router.replace("/");
+        }, 2000);
+      } finally {
+        setIsVerifying(false);
+      }
+    };
+
+    verifyCheckout();
+  }, [searchParams, router, onVerified, verificationStatus, setIsVerifying]);
+
+  if (verificationStatus === "idle") return null;
+
+  return (
+    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] flex items-center justify-center">
+      <div className="bg-card border rounded-lg p-8 max-w-sm mx-4 text-center space-y-4">
+        {verificationStatus === "verifying" && (
+          <>
+            <Loader2 className="size-12 animate-spin mx-auto text-primary" />
+            <div>
+              <h3 className="font-semibold text-lg">Verifying Payment</h3>
+              <p className="text-sm text-muted-foreground">Please wait...</p>
+            </div>
+          </>
+        )}
+        {verificationStatus === "success" && (
+          <>
+            <CheckCircle className="size-12 mx-auto text-green-500" />
+            <div>
+              <h3 className="font-semibold text-lg">Payment Successful</h3>
+              <p className="text-sm text-muted-foreground">Your credits have been added!</p>
+            </div>
+          </>
+        )}
+        {verificationStatus === "error" && (
+          <>
+            <div className="size-12 mx-auto rounded-full bg-yellow-100 flex items-center justify-center">
+              <span className="text-2xl">!</span>
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg">Verification Pending</h3>
+              <p className="text-sm text-muted-foreground">Your payment is being processed. Credits will appear shortly.</p>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function Home() {
+  const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
   const {
     visitorId,
     isAuthenticated,
@@ -85,7 +159,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-background flex flex-col">
       <Suspense fallback={null}>
-        <CheckoutSuccessHandler onSuccess={refetchBoards} />
+        <CheckoutVerificationHandler onVerified={refetchBoards} setIsVerifying={setIsVerifyingPayment} />
       </Suspense>
       <header className="border-b sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50">
         <div className="container mx-auto px-3 py-3 sm:px-4 sm:py-4">

@@ -12,7 +12,7 @@ import {
   getCreditsForProfile,
 } from "@/db/queries";
 import { db } from "@/db";
-import { goals, visionBoards, userProfiles } from "@/db/schema";
+import { goals } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 export async function POST(request: Request) {
@@ -84,29 +84,36 @@ export async function POST(request: Request) {
     }
   }
 
-  const generatedUrl = await generateImageWithUser(userImageUrl, goalPrompt);
+  await updateGoal(goalId, { status: "generating" });
 
-  const response = await fetch(generatedUrl);
-  const imageBuffer = await response.arrayBuffer();
+  try {
+    const generatedUrl = await generateImageWithUser(userImageUrl, goalPrompt);
 
-  const blob = await put(`goal-${goalId}-${Date.now()}.png`, imageBuffer, {
-    access: "public",
-    contentType: "image/png",
-    token: process.env.BLOB_READ_WRITE_TOKEN,
-  });
+    const response = await fetch(generatedUrl);
+    const imageBuffer = await response.arrayBuffer();
 
-  await updateGoal(goalId, { generatedImageUrl: blob.url });
+    const blob = await put(`goal-${goalId}-${Date.now()}.png`, imageBuffer, {
+      access: "public",
+      contentType: "image/png",
+      token: process.env.BLOB_READ_WRITE_TOKEN,
+    });
 
-  let newCredits = credits;
-  if (limits.isPaid && !isRegeneration) {
-    await deductCredit(profile.id);
-    newCredits = credits - 1;
+    await updateGoal(goalId, { generatedImageUrl: blob.url, status: "completed" });
+
+    let newCredits = credits;
+    if (limits.isPaid && !isRegeneration) {
+      await deductCredit(profile.id);
+      newCredits = credits - 1;
+    }
+
+    return NextResponse.json({
+      goalId,
+      imageUrl: blob.url,
+      remaining,
+      credits: newCredits,
+    });
+  } catch (err) {
+    await updateGoal(goalId, { status: "failed" });
+    throw err;
   }
-
-  return NextResponse.json({
-    goalId,
-    imageUrl: blob.url,
-    remaining,
-    credits: newCredits,
-  });
 }
