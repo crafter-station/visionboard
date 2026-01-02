@@ -1,16 +1,22 @@
 import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { generateImageWithUser } from "@/lib/fal";
-import { validateRequest } from "@/lib/auth";
-import { updateGoal, countGeneratedPhotosByVisitor, LIMITS } from "@/db/queries";
+import { validateRequest, getUserCreditsCount } from "@/lib/auth";
+import {
+  updateGoal,
+  countGeneratedPhotosByIdentifier,
+  getUserLimits,
+  deductCredit,
+  LIMITS,
+} from "@/db/queries";
 import { db } from "@/db";
-import { goals, visionBoards } from "@/db/schema";
+import { goals } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 export async function POST(request: Request) {
-  const { success, visitorId, error, remaining } = await validateRequest("image-gen");
+  const { success, userId, visitorId, identifier, error, remaining } = await validateRequest("image-gen");
 
-  if (!success || !visitorId) {
+  if (!success || (!userId && !visitorId)) {
     return NextResponse.json(
       { error: error || "Unauthorized", remaining },
       { status: 429 }
@@ -35,19 +41,41 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Goal not found" }, { status: 404 });
   }
 
-  if (existingGoal.board.visitorId !== visitorId) {
+  const boardUserId = existingGoal.board.userId;
+  const boardVisitorId = existingGoal.board.visitorId;
+  const isOwner = (userId && boardUserId === userId) || (visitorId && boardVisitorId === visitorId);
+
+  if (!isOwner) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
   const isRegeneration = !!existingGoal.generatedImageUrl;
+  const credits = userId ? await getUserCreditsCount() : 0;
+  const limits = getUserLimits(credits);
 
   if (!isRegeneration) {
-    const photoCount = await countGeneratedPhotosByVisitor(visitorId);
-    if (photoCount >= LIMITS.MAX_PHOTOS_PER_USER) {
-      return NextResponse.json(
-        { error: `Maximum ${LIMITS.MAX_PHOTOS_PER_USER} generated photos allowed. Delete some goals to generate new ones.` },
-        { status: 400 }
-      );
+    if (limits.isPaid) {
+      if (credits <= 0) {
+        return NextResponse.json(
+          {
+            error: "No credits remaining. Purchase more to continue generating images.",
+            requiresUpgrade: true,
+            credits: 0,
+          },
+          { status: 400 }
+        );
+      }
+    } else {
+      const photoCount = await countGeneratedPhotosByIdentifier(identifier);
+      if (photoCount >= LIMITS.FREE_MAX_PHOTOS) {
+        return NextResponse.json(
+          {
+            error: `Free limit of ${LIMITS.FREE_MAX_PHOTOS} images reached. Sign in and purchase credits for unlimited boards and 50 more images.`,
+            requiresUpgrade: true,
+          },
+          { status: 400 }
+        );
+      }
     }
   }
 
@@ -64,9 +92,16 @@ export async function POST(request: Request) {
 
   await updateGoal(goalId, { generatedImageUrl: blob.url });
 
+  let newCredits = credits;
+  if (limits.isPaid && !isRegeneration && userId) {
+    await deductCredit(userId);
+    newCredits = credits - 1;
+  }
+
   return NextResponse.json({
     goalId,
     imageUrl: blob.url,
     remaining,
+    credits: newCredits,
   });
 }
