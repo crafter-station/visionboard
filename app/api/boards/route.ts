@@ -1,15 +1,24 @@
 import { NextResponse } from "next/server";
-import { getVisionBoardsByVisitor, deleteVisionBoard, createVisionBoard, LIMITS } from "@/db/queries";
-import { getVisitorId } from "@/lib/auth";
+import {
+  getVisionBoardsByIdentifier,
+  deleteVisionBoard,
+  createVisionBoard,
+  getUserLimits,
+  type UserIdentifier,
+} from "@/db/queries";
+import { getAuthIdentifier, isPaidUser } from "@/lib/auth";
 
 export async function GET() {
-  const visitorId = await getVisitorId();
+  const identifier = await getAuthIdentifier();
+  const { userId, visitorId } = identifier;
 
-  if (!visitorId) {
+  if (!userId && !visitorId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const boards = await getVisionBoardsByVisitor(visitorId);
+  const boards = await getVisionBoardsByIdentifier(identifier);
+  const isPaid = await isPaidUser();
+  const limits = getUserLimits(isPaid);
 
   const totalPhotos = boards.reduce(
     (acc, board) => acc + board.goals.filter((g) => g.generatedImageUrl).length,
@@ -18,18 +27,25 @@ export async function GET() {
 
   return NextResponse.json({
     boards,
-    limits: LIMITS,
+    limits: {
+      MAX_BOARDS_PER_USER: limits.maxBoards,
+      MAX_GOALS_PER_BOARD: limits.maxGoalsPerBoard,
+      MAX_PHOTOS_PER_USER: limits.maxPhotos,
+    },
     usage: {
       boards: boards.length,
       photos: totalPhotos,
     },
+    isAuthenticated: !!userId,
+    isPaid,
   });
 }
 
 export async function POST(request: Request) {
-  const visitorId = await getVisitorId();
+  const identifier = await getAuthIdentifier();
+  const { userId, visitorId } = identifier;
 
-  if (!visitorId) {
+  if (!userId && !visitorId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -40,20 +56,30 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing reusePhotoFrom board ID" }, { status: 400 });
   }
 
-  const boards = await getVisionBoardsByVisitor(visitorId);
-  
-  if (boards.length >= LIMITS.MAX_BOARDS_PER_USER) {
-    return NextResponse.json({ error: "Maximum boards limit reached" }, { status: 400 });
+  const boards = await getVisionBoardsByIdentifier(identifier);
+  const isPaid = await isPaidUser();
+  const limits = getUserLimits(isPaid);
+
+  if (boards.length >= limits.maxBoards) {
+    // TODO: Polar - redirect to payment if not paid
+    return NextResponse.json(
+      { 
+        error: "Maximum boards limit reached",
+        requiresUpgrade: !isPaid,
+      },
+      { status: 400 }
+    );
   }
 
   const sourceBoard = boards.find((b) => b.id === reusePhotoFrom);
-  
+
   if (!sourceBoard) {
     return NextResponse.json({ error: "Source board not found" }, { status: 404 });
   }
 
   const newBoard = await createVisionBoard({
-    visitorId,
+    visitorId: userId ? null : visitorId,
+    userId: userId ?? undefined,
     userPhotoUrl: sourceBoard.userPhotoUrl,
     userPhotoNoBgUrl: sourceBoard.userPhotoNoBgUrl,
   });
@@ -66,9 +92,10 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const visitorId = await getVisitorId();
+  const identifier = await getAuthIdentifier();
+  const { userId, visitorId } = identifier;
 
-  if (!visitorId) {
+  if (!userId && !visitorId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -79,7 +106,7 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Missing board ID" }, { status: 400 });
   }
 
-  const boards = await getVisionBoardsByVisitor(visitorId);
+  const boards = await getVisionBoardsByIdentifier(identifier);
   const board = boards.find((b) => b.id === boardId);
 
   if (!board) {

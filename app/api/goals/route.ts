@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createGoal, deleteGoal, getVisionBoard, countGoalsByBoard, LIMITS } from "@/db/queries";
-import { validateRequest } from "@/lib/auth";
+import { createGoal, deleteGoal, getVisionBoard, countGoalsByBoard, getUserLimits } from "@/db/queries";
+import { validateRequest, isPaidUser } from "@/lib/auth";
 
 export async function POST(request: Request) {
   const { success, error, remaining } = await validateRequest("goals");
@@ -28,10 +28,13 @@ export async function POST(request: Request) {
     );
   }
 
+  const isPaid = await isPaidUser();
+  const limits = getUserLimits(isPaid);
+
   const goalCount = await countGoalsByBoard(boardId);
-  if (goalCount >= LIMITS.MAX_GOALS_PER_BOARD) {
+  if (goalCount >= limits.maxGoalsPerBoard) {
     return NextResponse.json(
-      { error: `Maximum ${LIMITS.MAX_GOALS_PER_BOARD} goals per board allowed` },
+      { error: `Maximum ${limits.maxGoalsPerBoard} goals per board allowed` },
       { status: 400 }
     );
   }

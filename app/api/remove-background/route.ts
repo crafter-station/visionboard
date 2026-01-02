@@ -1,23 +1,30 @@
 import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { removeBackground, pixelateImage } from "@/lib/fal";
-import { createVisionBoard, countBoardsByVisitor, LIMITS } from "@/db/queries";
-import { validateRequest } from "@/lib/auth";
+import { createVisionBoard, countBoardsByIdentifier, getUserLimits } from "@/db/queries";
+import { validateRequest, isPaidUser } from "@/lib/auth";
 
 export async function POST(request: Request) {
-  const { success, visitorId, error, remaining } = await validateRequest("bg-removal");
+  const { success, userId, visitorId, identifier, error, remaining } = await validateRequest("bg-removal");
 
-  if (!success || !visitorId) {
+  if (!success || (!userId && !visitorId)) {
     return NextResponse.json(
       { error: error || "Unauthorized" },
       { status: success ? 400 : 429, headers: remaining ? { "X-RateLimit-Remaining": String(remaining) } : {} }
     );
   }
 
-  const boardCount = await countBoardsByVisitor(visitorId);
-  if (boardCount >= LIMITS.MAX_BOARDS_PER_USER) {
+  const isPaid = await isPaidUser();
+  const limits = getUserLimits(isPaid);
+  const boardCount = await countBoardsByIdentifier(identifier);
+
+  if (boardCount >= limits.maxBoards) {
+    // TODO: Polar - redirect to payment if not paid
     return NextResponse.json(
-      { error: `Maximum ${LIMITS.MAX_BOARDS_PER_USER} boards allowed. Delete an existing board to create a new one.` },
+      { 
+        error: `Maximum ${limits.maxBoards} board${limits.maxBoards === 1 ? '' : 's'} allowed. ${!isPaid ? 'Sign up and upgrade for more.' : 'Delete an existing board to create a new one.'}`,
+        requiresUpgrade: !isPaid,
+      },
       { status: 400 }
     );
   }
@@ -29,7 +36,6 @@ export async function POST(request: Request) {
   }
 
   const pixelatedUrl = await pixelateImage(imageUrl);
-
   const noBgUrl = await removeBackground(pixelatedUrl);
 
   const response = await fetch(noBgUrl);
@@ -42,7 +48,8 @@ export async function POST(request: Request) {
   });
 
   const board = await createVisionBoard({
-    visitorId,
+    visitorId: userId ? null : visitorId,
+    userId: userId ?? undefined,
     userPhotoUrl: imageUrl,
     userPhotoNoBgUrl: blob.url,
   });
