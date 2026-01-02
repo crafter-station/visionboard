@@ -3,16 +3,24 @@ import {
   text,
   timestamp,
   integer,
-  boolean,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
-export const visionBoards = pgTable("vision_boards", {
+export const userProfiles = pgTable("user_profiles", {
   id: text("id").primaryKey(),
   visitorId: text("visitor_id"),
   userId: text("user_id"),
-  userPhotoUrl: text("user_photo_url").notNull(),
-  userPhotoNoBgUrl: text("user_photo_no_bg_url").notNull(),
+  avatarOriginalUrl: text("avatar_original_url"),
+  avatarNoBgUrl: text("avatar_no_bg_url"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const visionBoards = pgTable("vision_boards", {
+  id: text("id").primaryKey(),
+  profileId: text("profile_id")
+    .references(() => userProfiles.id, { onDelete: "cascade" })
+    .notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -31,7 +39,38 @@ export const goals = pgTable("goals", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const visionBoardsRelations = relations(visionBoards, ({ many }) => ({
+export const userCredits = pgTable("user_credits", {
+  profileId: text("profile_id")
+    .primaryKey()
+    .references(() => userProfiles.id, { onDelete: "cascade" }),
+  imageCredits: integer("image_credits").default(0).notNull(),
+  totalPurchased: integer("total_purchased").default(0).notNull(),
+  polarCustomerId: text("polar_customer_id"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const purchases = pgTable("purchases", {
+  id: text("id").primaryKey(),
+  profileId: text("profile_id")
+    .references(() => userProfiles.id, { onDelete: "cascade" })
+    .notNull(),
+  polarOrderId: text("polar_order_id").notNull().unique(),
+  amount: integer("amount").notNull(),
+  creditsAdded: integer("credits_added").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const userProfilesRelations = relations(userProfiles, ({ many, one }) => ({
+  boards: many(visionBoards),
+  credits: one(userCredits),
+  purchases: many(purchases),
+}));
+
+export const visionBoardsRelations = relations(visionBoards, ({ one, many }) => ({
+  profile: one(userProfiles, {
+    fields: [visionBoards.profileId],
+    references: [userProfiles.id],
+  }),
   goals: many(goals),
 }));
 
@@ -42,23 +81,22 @@ export const goalsRelations = relations(goals, ({ one }) => ({
   }),
 }));
 
-export const userCredits = pgTable("user_credits", {
-  userId: text("user_id").primaryKey(),
-  imageCredits: integer("image_credits").default(0).notNull(),
-  totalPurchased: integer("total_purchased").default(0).notNull(),
-  polarCustomerId: text("polar_customer_id"),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+export const userCreditsRelations = relations(userCredits, ({ one }) => ({
+  profile: one(userProfiles, {
+    fields: [userCredits.profileId],
+    references: [userProfiles.id],
+  }),
+}));
 
-export const purchases = pgTable("purchases", {
-  id: text("id").primaryKey(),
-  userId: text("user_id").notNull(),
-  polarOrderId: text("polar_order_id").notNull().unique(),
-  amount: integer("amount").notNull(),
-  creditsAdded: integer("credits_added").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+export const purchasesRelations = relations(purchases, ({ one }) => ({
+  profile: one(userProfiles, {
+    fields: [purchases.profileId],
+    references: [userProfiles.id],
+  }),
+}));
 
+export type UserProfile = typeof userProfiles.$inferSelect;
+export type NewUserProfile = typeof userProfiles.$inferInsert;
 export type VisionBoard = typeof visionBoards.$inferSelect;
 export type NewVisionBoard = typeof visionBoards.$inferInsert;
 export type Goal = typeof goals.$inferSelect;

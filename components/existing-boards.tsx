@@ -4,8 +4,15 @@ import { Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { VisionBoard, Goal } from "@/db/schema";
 
+interface ProfileData {
+  id: string;
+  avatarOriginalUrl: string | null;
+  avatarNoBgUrl: string | null;
+}
+
 interface ExistingBoardsProps {
   boards: (VisionBoard & { goals: Goal[] })[];
+  profile?: ProfileData | null;
   onSelectBoard: (board: VisionBoard & { goals: Goal[] }) => void;
   onDeleteBoard: (boardId: string) => void;
   onCreateNewBoard?: () => void;
@@ -22,6 +29,7 @@ interface ExistingBoardsProps {
 
 export function ExistingBoards({
   boards,
+  profile,
   onSelectBoard,
   onDeleteBoard,
   onCreateNewBoard,
@@ -30,16 +38,16 @@ export function ExistingBoards({
 }: ExistingBoardsProps) {
   if (boards.length === 0) return null;
 
-  const latestPhoto = boards[0]?.userPhotoNoBgUrl;
+  const avatarUrl = profile?.avatarNoBgUrl;
 
   return (
     <div className="space-y-6">
-      {onCreateNewBoard && latestPhoto && (
+      {onCreateNewBoard && avatarUrl && (
         <div className="border-2 border-dashed rounded-lg p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
             <div className="size-16 sm:size-20 rounded-full overflow-hidden bg-muted flex-shrink-0 border-2 border-foreground">
               <img
-                src={latestPhoto}
+                src={avatarUrl}
                 alt="Your photo"
                 className="w-full h-full object-cover object-top"
               />
@@ -63,7 +71,7 @@ export function ExistingBoards({
           <h3 className="text-base sm:text-lg font-semibold">Your Vision Boards</h3>
           {limits && usage && (
             <div className="text-xs sm:text-sm text-muted-foreground">
-              {usage.boards}/{limits.MAX_BOARDS_PER_USER} boards | {usage.photos}/{limits.MAX_PHOTOS_PER_USER} photos
+              {usage.boards}/{limits.MAX_BOARDS_PER_USER === Infinity ? "unlimited" : limits.MAX_BOARDS_PER_USER} boards | {usage.photos}/{limits.MAX_PHOTOS_PER_USER} images
             </div>
           )}
         </div>
@@ -80,11 +88,13 @@ export function ExistingBoards({
               >
                 <div className="flex gap-3 sm:gap-4">
                   <div className="size-14 sm:size-16 rounded-md overflow-hidden bg-muted flex-shrink-0">
-                    <img
-                      src={board.userPhotoNoBgUrl}
-                      alt="Profile"
-                      className="w-full h-full object-cover object-top"
-                    />
+                    {avatarUrl && (
+                      <img
+                        src={avatarUrl}
+                        alt="Profile"
+                        className="w-full h-full object-cover object-top"
+                      />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0 py-0.5">
                     <p className="text-sm font-medium truncate">

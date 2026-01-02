@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { createGoal, deleteGoal, getVisionBoard, countGoalsByBoard, getUserLimits } from "@/db/queries";
-import { validateRequest, getUserCreditsCount } from "@/lib/auth";
+import { createGoal, deleteGoal, getVisionBoard, countGoalsByBoard, getUserLimits, getProfileByIdentifier, getCreditsForProfile } from "@/db/queries";
+import { validateRequest } from "@/lib/auth";
 
 export async function POST(request: Request) {
-  const { success, userId, error, remaining } = await validateRequest("goals");
+  const { success, identifier, error, remaining } = await validateRequest("goals");
 
   if (!success) {
     return NextResponse.json(
@@ -28,7 +28,12 @@ export async function POST(request: Request) {
     );
   }
 
-  const credits = userId ? await getUserCreditsCount() : 0;
+  const profile = await getProfileByIdentifier(identifier);
+  if (!profile) {
+    return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+  }
+
+  const credits = await getCreditsForProfile(profile.id);
   const limits = getUserLimits(credits);
 
   const goalCount = await countGoalsByBoard(boardId);

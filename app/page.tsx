@@ -2,16 +2,16 @@
 
 import { SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 import { PhotoUpload } from "@/components/photo-upload";
-import { GoalInput } from "@/components/goal-input";
-import { VisionCanvas } from "@/components/vision-canvas";
+import { GalleryView } from "@/components/gallery-view";
 import { SponsorFooter } from "@/components/sponsor-footer";
 import { GithubBadge } from "@/components/github-badge";
 import { ExistingBoards } from "@/components/existing-boards";
 import { ThemeSwitcherButton } from "@/components/elements/theme-switcher-button";
+import { UpgradeCTA } from "@/components/upgrade-cta";
+import { ProBadge } from "@/components/ui/pro-badge";
 import { Button } from "@/components/ui/button";
 import { useVisionBoard } from "@/hooks/use-vision-board";
-import { cn } from "@/lib/utils";
-import { Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 
 export default function Home() {
   const {
@@ -20,22 +20,27 @@ export default function Home() {
     isLoadingAuth,
     isLoadingBoards,
     boardData,
+    profile,
     goals,
-    setGoals,
     step,
     isGenerating,
+    isAddingGoal,
     existingBoards,
     limits,
     usage,
     userId,
+    isPaid,
+    credits,
+    hasExistingPhoto,
+    canAddMoreGoals,
+    isAtLimit,
     onUploadComplete,
-    generateAllImages,
+    addAndGenerateGoal,
     regenerateGoalImage,
     deleteGoal,
     deleteBoard,
     loadExistingBoard,
-    resetToUpload,
-    savePositions,
+    resetToBoards,
     createBoardWithExistingPhoto,
   } = useVisionBoard();
 
@@ -48,7 +53,7 @@ export default function Home() {
       <main className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="size-8 animate-spin" />
-          <p className="text-sm text-muted-foreground">Initializing...</p>
+          <p className="text-sm text-muted-foreground">Loading...</p>
         </div>
       </main>
     );
@@ -56,7 +61,9 @@ export default function Home() {
 
   const canCreateNewBoard = !limits || !usage || usage.boards < limits.MAX_BOARDS_PER_USER;
   const hasExistingBoards = existingBoards.length > 0;
-  const hasReachedLimit = hasExistingBoards && !canCreateNewBoard;
+  const showUpload = !hasExistingPhoto && step === "upload";
+  const showBoardsList = hasExistingBoards && step === "upload" && !boardData;
+  const showGallery = step === "gallery" && boardData;
 
   return (
     <main className="min-h-screen bg-background flex flex-col">
@@ -64,10 +71,10 @@ export default function Home() {
         <div className="container mx-auto px-3 py-3 sm:px-4 sm:py-4">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-              {step === "board" && boardData?.noBgUrl && (
+              {showGallery && boardData?.avatarNoBgUrl && (
                 <div className="size-8 sm:size-12 rounded-full overflow-hidden border-2 border-foreground bg-muted flex-shrink-0">
                   <img
-                    src={boardData.noBgUrl}
+                    src={boardData.avatarNoBgUrl}
                     alt="Your photo"
                     className="w-full h-full object-cover object-top"
                   />
@@ -81,6 +88,7 @@ export default function Home() {
               </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+              {isPaid && <ProBadge credits={credits} />}
               <ThemeSwitcherButton />
               <GithubBadge />
               
@@ -107,143 +115,106 @@ export default function Home() {
                   </SignUpButton>
                 </div>
               )}
-
-              <div className="flex items-center gap-1 sm:gap-2">
-                {["upload", "goals", "board"].map((s, i) => (
-                  <div
-                    key={s}
-                    className={cn(
-                      "flex items-center gap-1 sm:gap-2 text-xs sm:text-sm",
-                      step === s
-                        ? "text-foreground font-medium"
-                        : "text-muted-foreground"
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "size-5 sm:size-6 flex items-center justify-center text-[10px] sm:text-xs border",
-                        step === s
-                          ? "bg-foreground text-background"
-                          : "bg-transparent"
-                      )}
-                    >
-                      {i + 1}
-                    </span>
-                    <span className="hidden md:inline capitalize">{s}</span>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         </div>
       </header>
 
       <div className="container mx-auto px-3 py-6 sm:px-4 sm:py-12 flex-1">
-        {step === "upload" && (
+        {showUpload && (
           <div className="max-w-4xl mx-auto space-y-8 sm:space-y-12">
-            {hasExistingBoards && (
-              <ExistingBoards
-                boards={existingBoards}
-                onSelectBoard={loadExistingBoard}
-                onDeleteBoard={deleteBoard}
-                onCreateNewBoard={canCreateNewBoard ? createBoardWithExistingPhoto : undefined}
-                limits={limits}
-                usage={usage}
+            <div className="flex justify-center">
+              <img
+                src="/brand/hero-Image.png"
+                alt="Vision Board AI"
+                className="w-full max-w-md sm:max-w-2xl h-auto object-contain"
+              />
+            </div>
+            <div className="max-w-2xl mx-auto space-y-6 sm:space-y-8">
+              <div className="text-center space-y-2">
+                <h2 className="text-xl sm:text-3xl font-bold tracking-tight">
+                  Start with Your Photo
+                </h2>
+                <p className="text-sm sm:text-base text-muted-foreground">
+                  Upload a photo of yourself. We will remove the background and use
+                  it to place you in your dream scenarios.
+                </p>
+              </div>
+              <PhotoUpload visitorId={visitorId} onUploadComplete={onUploadComplete} />
+            </div>
+          </div>
+        )}
+
+        {showBoardsList && (
+          <div className="max-w-4xl mx-auto space-y-8 sm:space-y-12">
+            <ExistingBoards
+              boards={existingBoards}
+              profile={profile}
+              onSelectBoard={loadExistingBoard}
+              onDeleteBoard={deleteBoard}
+              onCreateNewBoard={canCreateNewBoard ? createBoardWithExistingPhoto : undefined}
+              limits={limits}
+              usage={usage}
+            />
+
+            {!canCreateNewBoard && !isPaid && (
+              <UpgradeCTA
+                isAuthenticated={isAuthenticated}
+                checkoutUrl={checkoutUrl}
+                message={`You've reached the limit of ${limits?.MAX_BOARDS_PER_USER} board${(limits?.MAX_BOARDS_PER_USER ?? 1) === 1 ? '' : 's'}. Upgrade for unlimited boards and 50 more images.`}
+              />
+            )}
+          </div>
+        )}
+
+        {showGallery && (
+          <div className="max-w-4xl mx-auto space-y-6">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={resetToBoards}
+                className="gap-2"
+              >
+                <ArrowLeft className="size-4" />
+                Back
+              </Button>
+            </div>
+
+            <GalleryView
+              boardId={boardData?.boardId}
+              goals={goals}
+              userPhotoUrl={boardData?.avatarNoBgUrl ?? undefined}
+              onAddGoal={addAndGenerateGoal}
+              onRegenerate={regenerateGoalImage}
+              onDeleteGoal={deleteGoal}
+              canAddMore={canAddMoreGoals}
+              isAtLimit={isAtLimit}
+              isAuthenticated={isAuthenticated}
+              isPro={isPaid}
+              isAddingGoal={isAddingGoal}
+            />
+
+            {isAtLimit && !isPaid && goals.length > 0 && (
+              <UpgradeCTA
+                isAuthenticated={isAuthenticated}
+                checkoutUrl={checkoutUrl}
+                message={
+                  isAuthenticated
+                    ? "You've used all your free images. Upgrade to get 50 more generations."
+                    : "You've used all 3 free images. Sign up to get more."
+                }
               />
             )}
 
-            {!hasExistingBoards && (
-              <>
-                <div className="flex justify-center">
-                  <img
-                    src="/brand/hero-Image.png"
-                    alt="Vision Board AI"
-                    className="w-full max-w-md sm:max-w-2xl h-auto object-contain"
-                  />
-                </div>
-                <div className="max-w-2xl mx-auto space-y-6 sm:space-y-8">
-                  <div className="text-center space-y-2">
-                    <h2 className="text-xl sm:text-3xl font-bold tracking-tight">
-                      Start with Your Photo
-                    </h2>
-                    <p className="text-sm sm:text-base text-muted-foreground">
-                      Upload a photo of yourself. We will remove the background and use
-                      it to place you in your dream scenarios.
-                    </p>
-                  </div>
-                  <PhotoUpload visitorId={visitorId} onUploadComplete={onUploadComplete} />
-                </div>
-              </>
-            )}
-
-            {hasReachedLimit && (
-              <div className="border-2 border-dashed rounded-lg p-6 sm:p-8 text-center space-y-4">
-                <div className="flex justify-center">
-                  <div className="size-12 rounded-full bg-muted flex items-center justify-center">
-                    <Sparkles className="size-6" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold">
-                    {isAuthenticated ? "Upgrade for More Boards" : "Sign Up for More Boards"}
-                  </h3>
-                  <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                    You have reached the limit of {limits?.MAX_BOARDS_PER_USER} board{limits?.MAX_BOARDS_PER_USER === 1 ? '' : 's'}.
-                    {isAuthenticated 
-                      ? " Upgrade your account to create unlimited vision boards."
-                      : " Sign up and upgrade to create more vision boards."}
-                  </p>
-                </div>
-                {isAuthenticated ? (
-                  <Button asChild>
-                    <a href={checkoutUrl || "#"}>
-                      Upgrade - $5 for more
-                    </a>
-                  </Button>
-                ) : (
-                  <SignUpButton mode="modal">
-                    <Button>
-                      Sign Up to Continue
-                    </Button>
-                  </SignUpButton>
-                )}
-              </div>
+            {isPaid && credits === 0 && (
+              <UpgradeCTA
+                isAuthenticated={isAuthenticated}
+                checkoutUrl={checkoutUrl}
+                message="You've used all your credits. Purchase more to continue generating images."
+              />
             )}
           </div>
-        )}
-
-        {step === "goals" && (
-          <div className="max-w-2xl mx-auto space-y-6 sm:space-y-8">
-            {boardData && (
-              <div className="flex justify-center">
-                <div className="relative">
-                  <img
-                    src={boardData.noBgUrl}
-                    alt="Your photo"
-                    className="h-24 sm:h-32 w-auto object-contain"
-                  />
-                </div>
-              </div>
-            )}
-            <GoalInput
-              goals={goals}
-              onGoalsChange={setGoals}
-              onGenerate={generateAllImages}
-              isGenerating={isGenerating}
-              maxGoals={limits?.MAX_GOALS_PER_BOARD}
-            />
-          </div>
-        )}
-
-        {step === "board" && (
-          <VisionCanvas
-            boardId={boardData?.boardId}
-            goals={goals}
-            onRegenerate={regenerateGoalImage}
-            onDeleteGoal={deleteGoal}
-            onBack={resetToUpload}
-            onSavePositions={savePositions}
-          />
         )}
       </div>
 

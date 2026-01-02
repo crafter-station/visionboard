@@ -27,7 +27,7 @@ function getAlternatingRotation(id: string, index: number): number {
 }
 
 interface ShareCanvasProps {
-  board: VisionBoard & { goals: Goal[] };
+  board: VisionBoard & { goals: Goal[]; profile?: { avatarNoBgUrl: string | null } | null };
 }
 
 export function ShareCanvas({ board }: ShareCanvasProps) {

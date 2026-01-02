@@ -6,10 +6,17 @@ import type { Goal } from "@/components/goal-input";
 import { useAuth } from "./use-auth";
 import type { VisionBoard, Goal as DBGoalType } from "@/db/schema";
 
+interface ProfileData {
+  id: string;
+  avatarOriginalUrl: string | null;
+  avatarNoBgUrl: string | null;
+}
+
 interface BoardData {
   boardId: string;
-  originalUrl: string;
-  noBgUrl: string;
+  profileId: string;
+  avatarOriginalUrl: string | null;
+  avatarNoBgUrl: string | null;
 }
 
 interface DBGoal {
@@ -20,6 +27,7 @@ interface DBGoal {
 
 interface BoardsResponse {
   boards: (VisionBoard & { goals: DBGoalType[] })[];
+  profile: ProfileData | null;
   limits: {
     MAX_BOARDS_PER_USER: number;
     MAX_GOALS_PER_BOARD: number;
@@ -31,6 +39,7 @@ interface BoardsResponse {
   };
   isAuthenticated: boolean;
   isPaid: boolean;
+  credits: number;
 }
 
 function createAuthHeaders(visitorId: string | null): HeadersInit {
@@ -63,7 +72,8 @@ export function useVisionBoard() {
   const { userId, visitorId, isLoading: isLoadingAuth, isAuthenticated, hasMigrated } = useAuth();
   const [boardData, setBoardData] = useState<BoardData | null>(null);
   const [goals, setGoals] = useState<Goal[]>([]);
-  const [step, setStep] = useState<"upload" | "goals" | "board">("upload");
+  const [step, setStep] = useState<"upload" | "gallery">("upload");
+  const [isAddingGoal, setIsAddingGoal] = useState(false);
 
   const queryKey = ["boards", userId || visitorId];
 
@@ -80,12 +90,18 @@ export function useVisionBoard() {
   });
 
   const uploadMutation = useMutation({
-    mutationFn: async (data: BoardData) => {
-      setBoardData(data);
-      return data;
+    mutationFn: async (data: { boardId: string; profileId: string; originalUrl: string; noBgUrl: string }) => {
+      const boardData: BoardData = {
+        boardId: data.boardId,
+        profileId: data.profileId,
+        avatarOriginalUrl: data.originalUrl,
+        avatarNoBgUrl: data.noBgUrl,
+      };
+      setBoardData(boardData);
+      return boardData;
     },
     onSuccess: () => {
-      setStep("goals");
+      setStep("gallery");
       queryClient.invalidateQueries({ queryKey });
     },
   });
@@ -161,10 +177,12 @@ export function useVisionBoard() {
   });
 
   const loadExistingBoard = useCallback((board: VisionBoard & { goals: DBGoalType[] }) => {
+    const profile = boardsData?.profile;
     setBoardData({
       boardId: board.id,
-      originalUrl: board.userPhotoUrl,
-      noBgUrl: board.userPhotoNoBgUrl,
+      profileId: board.profileId,
+      avatarOriginalUrl: profile?.avatarOriginalUrl ?? null,
+      avatarNoBgUrl: profile?.avatarNoBgUrl ?? null,
     });
     setGoals(
       board.goals.map((g) => ({
@@ -175,73 +193,41 @@ export function useVisionBoard() {
         isGenerating: false,
       }))
     );
-    setStep("board");
-  }, []);
+    setStep("gallery");
+  }, [boardsData?.profile]);
 
-  const generateAllImages = useCallback(async () => {
-    if (!boardData) return;
+  const addAndGenerateGoal = useCallback(
+    async (title: string) => {
+      if (!boardData?.avatarNoBgUrl) return;
 
-    setStep("board");
-
-    const existingGoals = goals.filter((g) => g.generatedImageUrl || g.id.startsWith("goal_"));
-    const newGoals = goals.filter((g) => !g.id.startsWith("goal_") && !g.generatedImageUrl);
-
-    const savedGoals = await Promise.all(
-      newGoals.map(async (goal) => {
-        const dbGoal = await saveGoalToDatabase(
-          boardData.boardId,
-          goal.title,
-          visitorId
-        );
-        return { localId: goal.id, dbId: dbGoal.id, title: goal.title };
-      })
-    );
-
-    const idMap = new Map(savedGoals.map((g) => [g.localId, g.dbId]));
-
-    setGoals((prev) =>
-      prev.map((g) => ({
-        ...g,
-        id: idMap.get(g.id) || g.id,
-      }))
-    );
-
-    const allGoalsToProcess = [
-      ...savedGoals,
-      ...existingGoals
-        .filter((g) => !g.generatedImageUrl)
-        .map((g) => ({ localId: g.id, dbId: g.id, title: g.title })),
-    ];
-
-    const CONCURRENCY = 4;
-
-    const processGoal = async (goalMapping: {
-      localId: string;
-      dbId: string;
-      title: string;
-    }) => {
-      setGoals((prev) =>
-        prev.map((g) =>
-          g.id === goalMapping.dbId ? { ...g, isGenerating: true } : g
-        )
-      );
+      setIsAddingGoal(true);
 
       try {
+        const dbGoal = await saveGoalToDatabase(boardData.boardId, title, visitorId);
+
+        const newGoal: Goal = {
+          id: dbGoal.id,
+          title,
+          isGenerating: true,
+        };
+
+        setGoals((prev) => [...prev, newGoal]);
+
         const [imageResult, phraseResult] = await Promise.all([
           generateImageMutation.mutateAsync({
-            goalId: goalMapping.dbId,
-            goalPrompt: goalMapping.title,
-            userImageUrl: boardData.noBgUrl,
+            goalId: dbGoal.id,
+            goalPrompt: title,
+            userImageUrl: boardData.avatarNoBgUrl!,
           }),
           generatePhraseMutation.mutateAsync({
-            goalId: goalMapping.dbId,
-            goalTitle: goalMapping.title,
+            goalId: dbGoal.id,
+            goalTitle: title,
           }),
         ]);
 
         setGoals((prev) =>
           prev.map((g) =>
-            g.id === goalMapping.dbId
+            g.id === dbGoal.id
               ? {
                   ...g,
                   isGenerating: false,
@@ -251,26 +237,21 @@ export function useVisionBoard() {
               : g
           )
         );
-      } catch {
-        setGoals((prev) =>
-          prev.map((g) =>
-            g.id === goalMapping.dbId ? { ...g, isGenerating: false } : g
-          )
-        );
+
+        queryClient.invalidateQueries({ queryKey });
+      } catch (error) {
+        setGoals((prev) => prev.filter((g) => g.title !== title || !g.isGenerating));
+        throw error;
+      } finally {
+        setIsAddingGoal(false);
       }
-    };
-
-    for (let i = 0; i < allGoalsToProcess.length; i += CONCURRENCY) {
-      const batch = allGoalsToProcess.slice(i, i + CONCURRENCY);
-      await Promise.all(batch.map(processGoal));
-    }
-
-    queryClient.invalidateQueries({ queryKey });
-  }, [boardData, goals, visitorId, generateImageMutation, generatePhraseMutation, queryClient, queryKey]);
+    },
+    [boardData, visitorId, generateImageMutation, generatePhraseMutation, queryClient, queryKey]
+  );
 
   const regenerateGoalImage = useCallback(
     async (goalId: string) => {
-      if (!boardData) return;
+      if (!boardData?.avatarNoBgUrl) return;
 
       const goal = goals.find((g) => g.id === goalId);
       if (!goal) return;
@@ -284,7 +265,7 @@ export function useVisionBoard() {
           generateImageMutation.mutateAsync({
             goalId,
             goalPrompt: goal.title,
-            userImageUrl: boardData.noBgUrl,
+            userImageUrl: boardData.avatarNoBgUrl,
           }),
           generatePhraseMutation.mutateAsync({
             goalId,
@@ -335,22 +316,20 @@ export function useVisionBoard() {
     [deleteBoardMutation, boardData]
   );
 
-  const resetToUpload = useCallback(() => {
+  const resetToBoards = useCallback(() => {
     setBoardData(null);
     setGoals([]);
     setStep("upload");
   }, []);
 
   const createBoardWithExistingPhoto = useCallback(async () => {
-    if (!boardsData?.boards.length) return;
+    const profile = boardsData?.profile;
+    if (!profile?.avatarNoBgUrl) return;
     if (!userId && !visitorId) return;
-
-    const latestBoard = boardsData.boards[0];
 
     const res = await fetch("/api/boards", {
       method: "POST",
       headers: createAuthHeaders(visitorId),
-      body: JSON.stringify({ reusePhotoFrom: latestBoard.id }),
     });
 
     if (!res.ok) {
@@ -361,29 +340,24 @@ export function useVisionBoard() {
     const data = await res.json();
     setBoardData({
       boardId: data.boardId,
-      originalUrl: data.originalUrl,
-      noBgUrl: data.noBgUrl,
+      profileId: data.profileId,
+      avatarOriginalUrl: data.avatarOriginalUrl,
+      avatarNoBgUrl: data.avatarNoBgUrl,
     });
     setGoals([]);
-    setStep("goals");
+    setStep("gallery");
     queryClient.invalidateQueries({ queryKey });
   }, [boardsData, userId, visitorId, queryClient, queryKey]);
 
-  const savePositions = useCallback(
-    async (positions: Array<{ id: string; x: number; y: number; width: number; height: number }>) => {
-      try {
-        await fetch("/api/save-layout", {
-          method: "POST",
-          headers: createAuthHeaders(visitorId),
-          body: JSON.stringify({ positions }),
-        });
-      } catch (error) {
-        console.error("Failed to save positions:", error);
-      }
-    },
-    [visitorId]
-  );
+  const profile = boardsData?.profile;
+  const hasExistingPhoto = !!profile?.avatarNoBgUrl;
+  const isPaid = boardsData?.isPaid ?? false;
+  const credits = boardsData?.credits ?? 0;
+  const photosUsed = boardsData?.usage?.photos ?? 0;
+  const maxPhotos = boardsData?.limits?.MAX_PHOTOS_PER_USER ?? 3;
 
+  const canAddMoreGoals = isPaid ? credits > 0 : photosUsed < maxPhotos;
+  const isAtLimit = !canAddMoreGoals;
   const isGenerating = goals.some((g) => g.isGenerating);
 
   return {
@@ -394,23 +368,28 @@ export function useVisionBoard() {
     isLoadingAuth,
     isLoadingBoards,
     boardData,
+    profile,
     goals,
     setGoals,
     step,
     setStep,
     isGenerating,
+    isAddingGoal,
     existingBoards: boardsData?.boards ?? [],
     limits: boardsData?.limits,
     usage: boardsData?.usage,
-    isPaid: boardsData?.isPaid ?? false,
+    isPaid,
+    credits,
+    hasExistingPhoto,
+    canAddMoreGoals,
+    isAtLimit,
     onUploadComplete: uploadMutation.mutate,
-    generateAllImages,
+    addAndGenerateGoal,
     regenerateGoalImage,
     deleteGoal,
     deleteBoard,
     loadExistingBoard,
-    resetToUpload,
-    savePositions,
+    resetToBoards,
     createBoardWithExistingPhoto,
     refetchBoards,
   };

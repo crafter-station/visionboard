@@ -1,8 +1,8 @@
 import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
-import { validateRequest, getUserCreditsCount } from "@/lib/auth";
-import { countBoardsByIdentifier, getUserLimits } from "@/db/queries";
+import { validateRequest } from "@/lib/auth";
+import { getOrCreateProfile, countBoardsForProfile, getUserLimits, getCreditsForProfile } from "@/db/queries";
 
 export async function POST(request: Request) {
   const { success, userId, visitorId, identifier, error, remaining } = await validateRequest("upload");
@@ -14,17 +14,16 @@ export async function POST(request: Request) {
     );
   }
 
-  const credits = userId ? await getUserCreditsCount() : 0;
+  const profile = await getOrCreateProfile(identifier);
+  const credits = await getCreditsForProfile(profile.id);
   const limits = getUserLimits(credits);
-  const isPaid = limits.isPaid;
-  const boardCount = await countBoardsByIdentifier(identifier);
+  const boardCount = await countBoardsForProfile(profile.id);
 
-  if (boardCount >= limits.maxBoards) {
-    // TODO: Polar - redirect to payment if not paid
+  if (boardCount >= limits.maxBoards && !profile.avatarNoBgUrl) {
     return NextResponse.json(
       { 
         error: "Maximum boards limit reached. Sign up and upgrade for more.",
-        requiresUpgrade: !isPaid,
+        requiresUpgrade: !limits.isPaid,
       },
       { status: 400 }
     );
@@ -47,12 +46,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid file type. Use JPEG, PNG, or WebP" }, { status: 400 });
   }
 
-  const filePrefix = userId || visitorId;
-  const filename = `${filePrefix}/${uuidv4()}-${file.name}`;
+  const filename = `${profile.id}/${uuidv4()}-${file.name}`;
   const blob = await put(filename, file, {
     access: "public",
     token: process.env.BLOB_READ_WRITE_TOKEN,
   });
 
-  return NextResponse.json({ url: blob.url });
+  return NextResponse.json({ url: blob.url, profileId: profile.id });
 }

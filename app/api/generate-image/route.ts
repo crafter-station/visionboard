@@ -1,16 +1,18 @@
 import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { generateImageWithUser } from "@/lib/fal";
-import { validateRequest, getUserCreditsCount } from "@/lib/auth";
+import { validateRequest } from "@/lib/auth";
 import {
   updateGoal,
-  countGeneratedPhotosByIdentifier,
+  countGeneratedPhotosForProfile,
   getUserLimits,
   deductCredit,
   LIMITS,
+  getProfileByIdentifier,
+  getCreditsForProfile,
 } from "@/db/queries";
 import { db } from "@/db";
-import { goals } from "@/db/schema";
+import { goals, visionBoards, userProfiles } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 export async function POST(request: Request) {
@@ -34,23 +36,26 @@ export async function POST(request: Request) {
 
   const existingGoal = await db.query.goals.findFirst({
     where: eq(goals.id, goalId),
-    with: { board: true },
+    with: { board: { with: { profile: true } } },
   });
 
   if (!existingGoal) {
     return NextResponse.json({ error: "Goal not found" }, { status: 404 });
   }
 
-  const boardUserId = existingGoal.board.userId;
-  const boardVisitorId = existingGoal.board.visitorId;
-  const isOwner = (userId && boardUserId === userId) || (visitorId && boardVisitorId === visitorId);
+  const profile = await getProfileByIdentifier(identifier);
+  if (!profile) {
+    return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+  }
+
+  const isOwner = existingGoal.board.profileId === profile.id;
 
   if (!isOwner) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
   const isRegeneration = !!existingGoal.generatedImageUrl;
-  const credits = userId ? await getUserCreditsCount() : 0;
+  const credits = await getCreditsForProfile(profile.id);
   const limits = getUserLimits(credits);
 
   if (!isRegeneration) {
@@ -66,7 +71,7 @@ export async function POST(request: Request) {
         );
       }
     } else {
-      const photoCount = await countGeneratedPhotosByIdentifier(identifier);
+      const photoCount = await countGeneratedPhotosForProfile(profile.id);
       if (photoCount >= LIMITS.FREE_MAX_PHOTOS) {
         return NextResponse.json(
           {
@@ -93,8 +98,8 @@ export async function POST(request: Request) {
   await updateGoal(goalId, { generatedImageUrl: blob.url });
 
   let newCredits = credits;
-  if (limits.isPaid && !isRegeneration && userId) {
-    await deductCredit(userId);
+  if (limits.isPaid && !isRegeneration) {
+    await deductCredit(profile.id);
     newCredits = credits - 1;
   }
 

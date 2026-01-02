@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { auth } from "@clerk/nextjs/server";
 import { checkRateLimit, type RateLimitType } from "./rate-limit";
 import type { UserIdentifier } from "@/db/queries";
+import { getProfileByIdentifier, getCreditsForProfile } from "@/db/queries";
 
 export async function getVisitorId(): Promise<string | null> {
   const headersList = await headers();
@@ -27,19 +28,16 @@ export async function isAuthenticated(): Promise<boolean> {
   return !!userId;
 }
 
-import { getUserCredits } from "@/db/queries";
-
-export async function isPaidUser(): Promise<boolean> {
-  const userId = await getUserId();
-  if (!userId) return false;
-  const credits = await getUserCredits(userId);
-  return credits > 0;
+export async function getUserCreditsCount(): Promise<number> {
+  const identifier = await getAuthIdentifier();
+  const profile = await getProfileByIdentifier(identifier);
+  if (!profile) return 0;
+  return getCreditsForProfile(profile.id);
 }
 
-export async function getUserCreditsCount(): Promise<number> {
-  const userId = await getUserId();
-  if (!userId) return 0;
-  return getUserCredits(userId);
+export async function isPaidUser(): Promise<boolean> {
+  const credits = await getUserCreditsCount();
+  return credits > 0;
 }
 
 export async function validateRequest(rateLimitType: RateLimitType = "general"): Promise<{

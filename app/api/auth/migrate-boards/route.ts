@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getUserId, getVisitorId } from "@/lib/auth";
-import { migrateBoardsToUser } from "@/db/queries";
+import { migrateProfileToUser } from "@/db/queries";
 
 export async function POST() {
   const userId = await getUserId();
@@ -8,7 +8,7 @@ export async function POST() {
 
   if (!userId) {
     return NextResponse.json(
-      { error: "Must be authenticated to migrate boards" },
+      { error: "Must be authenticated to migrate" },
       { status: 401 }
     );
   }
@@ -20,11 +20,11 @@ export async function POST() {
     );
   }
 
-  const migratedCount = await migrateBoardsToUser(visitorId, userId);
+  const profile = await migrateProfileToUser(visitorId, userId);
 
   return NextResponse.json({
     success: true,
-    migratedCount,
+    migrated: !!profile,
+    profileId: profile?.id,
   });
 }
-

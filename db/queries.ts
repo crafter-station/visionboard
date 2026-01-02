@@ -1,6 +1,7 @@
-import { eq, sql, and, isNotNull, isNull, or } from "drizzle-orm";
+import { eq, sql, and, isNotNull } from "drizzle-orm";
 import { db } from ".";
 import {
+  userProfiles,
   visionBoards,
   goals,
   userCredits,
@@ -8,6 +9,7 @@ import {
   type NewVisionBoard,
   type NewGoal,
   type Goal,
+  type UserProfile,
 } from "./schema";
 import { generateBoardId, generateGoalId } from "@/lib/id";
 import { nanoid } from "nanoid";
@@ -36,21 +38,132 @@ export function getUserLimits(credits: number = 0) {
   };
 }
 
-export async function getUserCredits(userId: string): Promise<number> {
+function generateProfileId(): string {
+  return `profile_${nanoid()}`;
+}
+
+export async function getProfileByVisitorId(visitorId: string) {
+  return db.query.userProfiles.findFirst({
+    where: eq(userProfiles.visitorId, visitorId),
+  });
+}
+
+export async function getProfileByUserId(userId: string) {
+  return db.query.userProfiles.findFirst({
+    where: eq(userProfiles.userId, userId),
+  });
+}
+
+export async function getProfileByIdentifier(identifier: UserIdentifier): Promise<UserProfile | undefined> {
+  const { userId, visitorId } = identifier;
+  
+  if (userId) {
+    return getProfileByUserId(userId);
+  }
+  
+  if (visitorId) {
+    return getProfileByVisitorId(visitorId);
+  }
+  
+  return undefined;
+}
+
+export async function getOrCreateProfile(identifier: UserIdentifier): Promise<UserProfile> {
+  const { userId, visitorId } = identifier;
+  
+  let profile = await getProfileByIdentifier(identifier);
+  
+  if (profile) {
+    return profile;
+  }
+  
+  const id = generateProfileId();
+  const [newProfile] = await db
+    .insert(userProfiles)
+    .values({
+      id,
+      visitorId: userId ? null : visitorId,
+      userId: userId ?? null,
+    })
+    .returning();
+  
+  return newProfile;
+}
+
+export async function updateProfileAvatar(
+  profileId: string,
+  avatarOriginalUrl: string,
+  avatarNoBgUrl: string
+) {
+  const [profile] = await db
+    .update(userProfiles)
+    .set({
+      avatarOriginalUrl,
+      avatarNoBgUrl,
+      updatedAt: new Date(),
+    })
+    .where(eq(userProfiles.id, profileId))
+    .returning();
+  return profile;
+}
+
+export async function migrateProfileToUser(visitorId: string, userId: string): Promise<UserProfile | null> {
+  const visitorProfile = await getProfileByVisitorId(visitorId);
+  if (!visitorProfile) return null;
+  
+  const existingUserProfile = await getProfileByUserId(userId);
+  
+  if (existingUserProfile) {
+    if (!existingUserProfile.avatarOriginalUrl && visitorProfile.avatarOriginalUrl) {
+      await db
+        .update(userProfiles)
+        .set({
+          avatarOriginalUrl: visitorProfile.avatarOriginalUrl,
+          avatarNoBgUrl: visitorProfile.avatarNoBgUrl,
+          updatedAt: new Date(),
+        })
+        .where(eq(userProfiles.id, existingUserProfile.id));
+    }
+    
+    await db
+      .update(visionBoards)
+      .set({ profileId: existingUserProfile.id })
+      .where(eq(visionBoards.profileId, visitorProfile.id));
+    
+    await db.delete(userProfiles).where(eq(userProfiles.id, visitorProfile.id));
+    
+    const updatedProfile = await getProfileByUserId(userId);
+    return updatedProfile ?? null;
+  }
+  
+  const [updatedProfile] = await db
+    .update(userProfiles)
+    .set({
+      userId,
+      visitorId: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(userProfiles.id, visitorProfile.id))
+    .returning();
+  
+  return updatedProfile;
+}
+
+export async function getCreditsForProfile(profileId: string): Promise<number> {
   const result = await db.query.userCredits.findFirst({
-    where: eq(userCredits.userId, userId),
+    where: eq(userCredits.profileId, profileId),
   });
   return result?.imageCredits ?? 0;
 }
 
-export async function getUserCreditsRecord(userId: string) {
+export async function getCreditsRecordForProfile(profileId: string) {
   return db.query.userCredits.findFirst({
-    where: eq(userCredits.userId, userId),
+    where: eq(userCredits.profileId, profileId),
   });
 }
 
 export async function addCredits(
-  userId: string,
+  profileId: string,
   amount: number,
   polarOrderId: string,
   polarCustomerId?: string
@@ -60,11 +173,11 @@ export async function addCredits(
   });
 
   if (existingPurchase) {
-    const credits = await getUserCredits(userId);
+    const credits = await getCreditsForProfile(profileId);
     return { credits, alreadyProcessed: true };
   }
 
-  const existing = await getUserCreditsRecord(userId);
+  const existing = await getCreditsRecordForProfile(profileId);
 
   if (existing) {
     await db
@@ -75,10 +188,10 @@ export async function addCredits(
         polarCustomerId: polarCustomerId ?? existing.polarCustomerId,
         updatedAt: new Date(),
       })
-      .where(eq(userCredits.userId, userId));
+      .where(eq(userCredits.profileId, profileId));
   } else {
     await db.insert(userCredits).values({
-      userId,
+      profileId,
       imageCredits: amount,
       totalPurchased: amount,
       polarCustomerId,
@@ -87,18 +200,18 @@ export async function addCredits(
 
   await db.insert(purchases).values({
     id: nanoid(),
-    userId,
+    profileId,
     polarOrderId,
     amount: 500,
     creditsAdded: amount,
   });
 
-  const credits = await getUserCredits(userId);
+  const credits = await getCreditsForProfile(profileId);
   return { credits, alreadyProcessed: false };
 }
 
-export async function deductCredit(userId: string): Promise<boolean> {
-  const credits = await getUserCredits(userId);
+export async function deductCredit(profileId: string): Promise<boolean> {
+  const credits = await getCreditsForProfile(profileId);
   if (credits <= 0) return false;
 
   await db
@@ -107,16 +220,16 @@ export async function deductCredit(userId: string): Promise<boolean> {
       imageCredits: sql`${userCredits.imageCredits} - 1`,
       updatedAt: new Date(),
     })
-    .where(eq(userCredits.userId, userId));
+    .where(eq(userCredits.profileId, profileId));
 
   return true;
 }
 
-export async function createVisionBoard(data: Omit<NewVisionBoard, "id">) {
+export async function createVisionBoard(profileId: string) {
   const id = generateBoardId();
   const [board] = await db
     .insert(visionBoards)
-    .values({ ...data, id })
+    .values({ id, profileId })
     .returning();
   return board;
 }
@@ -126,23 +239,14 @@ export async function getVisionBoard(id: string) {
     where: eq(visionBoards.id, id),
     with: {
       goals: true,
+      profile: true,
     },
   });
 }
 
-export async function getVisionBoardsByVisitor(visitorId: string) {
+export async function getVisionBoardsForProfile(profileId: string) {
   return db.query.visionBoards.findMany({
-    where: eq(visionBoards.visitorId, visitorId),
-    with: {
-      goals: true,
-    },
-    orderBy: (boards, { desc }) => [desc(boards.createdAt)],
-  });
-}
-
-export async function getVisionBoardsByUser(userId: string) {
-  return db.query.visionBoards.findMany({
-    where: eq(visionBoards.userId, userId),
+    where: eq(visionBoards.profileId, profileId),
     with: {
       goals: true,
     },
@@ -151,47 +255,23 @@ export async function getVisionBoardsByUser(userId: string) {
 }
 
 export async function getVisionBoardsByIdentifier(identifier: UserIdentifier) {
-  const { userId, visitorId } = identifier;
-  
-  if (userId) {
-    return getVisionBoardsByUser(userId);
-  }
-  
-  if (visitorId) {
-    return getVisionBoardsByVisitor(visitorId);
-  }
-  
-  return [];
+  const profile = await getProfileByIdentifier(identifier);
+  if (!profile) return [];
+  return getVisionBoardsForProfile(profile.id);
 }
 
-export async function countBoardsByVisitor(visitorId: string): Promise<number> {
+export async function countBoardsForProfile(profileId: string): Promise<number> {
   const result = await db
     .select({ count: sql<number>`count(*)` })
     .from(visionBoards)
-    .where(eq(visionBoards.visitorId, visitorId));
-  return Number(result[0]?.count ?? 0);
-}
-
-export async function countBoardsByUser(userId: string): Promise<number> {
-  const result = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(visionBoards)
-    .where(eq(visionBoards.userId, userId));
+    .where(eq(visionBoards.profileId, profileId));
   return Number(result[0]?.count ?? 0);
 }
 
 export async function countBoardsByIdentifier(identifier: UserIdentifier): Promise<number> {
-  const { userId, visitorId } = identifier;
-  
-  if (userId) {
-    return countBoardsByUser(userId);
-  }
-  
-  if (visitorId) {
-    return countBoardsByVisitor(visitorId);
-  }
-  
-  return 0;
+  const profile = await getProfileByIdentifier(identifier);
+  if (!profile) return 0;
+  return countBoardsForProfile(profile.id);
 }
 
 export async function countGoalsByBoard(boardId: string): Promise<number> {
@@ -202,28 +282,14 @@ export async function countGoalsByBoard(boardId: string): Promise<number> {
   return Number(result[0]?.count ?? 0);
 }
 
-export async function countGeneratedPhotosByVisitor(visitorId: string): Promise<number> {
+export async function countGeneratedPhotosForProfile(profileId: string): Promise<number> {
   const result = await db
     .select({ count: sql<number>`count(*)` })
     .from(goals)
     .innerJoin(visionBoards, eq(goals.boardId, visionBoards.id))
     .where(
       and(
-        eq(visionBoards.visitorId, visitorId),
-        isNotNull(goals.generatedImageUrl)
-      )
-    );
-  return Number(result[0]?.count ?? 0);
-}
-
-export async function countGeneratedPhotosByUser(userId: string): Promise<number> {
-  const result = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(goals)
-    .innerJoin(visionBoards, eq(goals.boardId, visionBoards.id))
-    .where(
-      and(
-        eq(visionBoards.userId, userId),
+        eq(visionBoards.profileId, profileId),
         isNotNull(goals.generatedImageUrl)
       )
     );
@@ -231,17 +297,9 @@ export async function countGeneratedPhotosByUser(userId: string): Promise<number
 }
 
 export async function countGeneratedPhotosByIdentifier(identifier: UserIdentifier): Promise<number> {
-  const { userId, visitorId } = identifier;
-  
-  if (userId) {
-    return countGeneratedPhotosByUser(userId);
-  }
-  
-  if (visitorId) {
-    return countGeneratedPhotosByVisitor(visitorId);
-  }
-  
-  return 0;
+  const profile = await getProfileByIdentifier(identifier);
+  if (!profile) return 0;
+  return countGeneratedPhotosForProfile(profile.id);
 }
 
 export async function deleteVisionBoard(id: string) {
@@ -286,16 +344,17 @@ export async function updateGoalPositions(
   }
 }
 
-export async function migrateBoardsToUser(visitorId: string, userId: string): Promise<number> {
-  const result = await db
-    .update(visionBoards)
-    .set({ userId, visitorId: null })
-    .where(
-      and(
-        eq(visionBoards.visitorId, visitorId),
-        isNull(visionBoards.userId)
-      )
-    )
-    .returning();
-  return result.length;
+export async function getProfileWithBoards(identifier: UserIdentifier) {
+  const profile = await getProfileByIdentifier(identifier);
+  if (!profile) return null;
+  
+  const boards = await getVisionBoardsForProfile(profile.id);
+  const credits = await getCreditsForProfile(profile.id);
+  
+  return {
+    profile,
+    boards,
+    credits,
+  };
 }
+

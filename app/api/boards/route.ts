@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import {
-  getVisionBoardsByIdentifier,
+  getProfileByIdentifier,
+  getVisionBoardsForProfile,
   deleteVisionBoard,
   createVisionBoard,
   getUserLimits,
-  type UserIdentifier,
+  countBoardsForProfile,
+  getCreditsForProfile,
 } from "@/db/queries";
-import { getAuthIdentifier, getUserCreditsCount } from "@/lib/auth";
+import { getAuthIdentifier } from "@/lib/auth";
 
 export async function GET() {
   const identifier = await getAuthIdentifier();
@@ -16,10 +18,30 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const boards = await getVisionBoardsByIdentifier(identifier);
-  const credits = userId ? await getUserCreditsCount() : 0;
+  const profile = await getProfileByIdentifier(identifier);
+  
+  if (!profile) {
+    return NextResponse.json({
+      boards: [],
+      profile: null,
+      limits: {
+        MAX_BOARDS_PER_USER: 1,
+        MAX_GOALS_PER_BOARD: 4,
+        MAX_PHOTOS_PER_USER: 3,
+      },
+      usage: {
+        boards: 0,
+        photos: 0,
+      },
+      isAuthenticated: !!userId,
+      isPaid: false,
+      credits: 0,
+    });
+  }
+
+  const boards = await getVisionBoardsForProfile(profile.id);
+  const credits = await getCreditsForProfile(profile.id);
   const limits = getUserLimits(credits);
-  const isPaid = limits.isPaid;
 
   const totalPhotos = boards.reduce(
     (acc, board) => acc + board.goals.filter((g) => g.generatedImageUrl).length,
@@ -28,6 +50,11 @@ export async function GET() {
 
   return NextResponse.json({
     boards,
+    profile: {
+      id: profile.id,
+      avatarOriginalUrl: profile.avatarOriginalUrl,
+      avatarNoBgUrl: profile.avatarNoBgUrl,
+    },
     limits: {
       MAX_BOARDS_PER_USER: limits.maxBoards,
       MAX_GOALS_PER_BOARD: limits.maxGoalsPerBoard,
@@ -38,7 +65,8 @@ export async function GET() {
       photos: totalPhotos,
     },
     isAuthenticated: !!userId,
-    isPaid,
+    isPaid: limits.isPaid,
+    credits,
   });
 }
 
@@ -50,46 +78,37 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json();
-  const { reusePhotoFrom } = body;
-
-  if (!reusePhotoFrom) {
-    return NextResponse.json({ error: "Missing reusePhotoFrom board ID" }, { status: 400 });
+  const profile = await getProfileByIdentifier(identifier);
+  
+  if (!profile) {
+    return NextResponse.json({ error: "Profile not found. Upload a photo first." }, { status: 400 });
   }
 
-  const boards = await getVisionBoardsByIdentifier(identifier);
-  const credits = userId ? await getUserCreditsCount() : 0;
-  const limits = getUserLimits(credits);
-  const isPaid = limits.isPaid;
+  if (!profile.avatarNoBgUrl) {
+    return NextResponse.json({ error: "No avatar found. Upload a photo first." }, { status: 400 });
+  }
 
-  if (boards.length >= limits.maxBoards) {
-    // TODO: Polar - redirect to payment if not paid
+  const credits = await getCreditsForProfile(profile.id);
+  const limits = getUserLimits(credits);
+  const boardCount = await countBoardsForProfile(profile.id);
+
+  if (boardCount >= limits.maxBoards) {
     return NextResponse.json(
       { 
         error: "Maximum boards limit reached",
-        requiresUpgrade: !isPaid,
+        requiresUpgrade: !limits.isPaid,
       },
       { status: 400 }
     );
   }
 
-  const sourceBoard = boards.find((b) => b.id === reusePhotoFrom);
-
-  if (!sourceBoard) {
-    return NextResponse.json({ error: "Source board not found" }, { status: 404 });
-  }
-
-  const newBoard = await createVisionBoard({
-    visitorId: userId ? null : visitorId,
-    userId: userId ?? undefined,
-    userPhotoUrl: sourceBoard.userPhotoUrl,
-    userPhotoNoBgUrl: sourceBoard.userPhotoNoBgUrl,
-  });
+  const newBoard = await createVisionBoard(profile.id);
 
   return NextResponse.json({
     boardId: newBoard.id,
-    originalUrl: newBoard.userPhotoUrl,
-    noBgUrl: newBoard.userPhotoNoBgUrl,
+    profileId: profile.id,
+    avatarOriginalUrl: profile.avatarOriginalUrl,
+    avatarNoBgUrl: profile.avatarNoBgUrl,
   });
 }
 
@@ -108,7 +127,12 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Missing board ID" }, { status: 400 });
   }
 
-  const boards = await getVisionBoardsByIdentifier(identifier);
+  const profile = await getProfileByIdentifier(identifier);
+  if (!profile) {
+    return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+  }
+
+  const boards = await getVisionBoardsForProfile(profile.id);
   const board = boards.find((b) => b.id === boardId);
 
   if (!board) {

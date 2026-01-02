@@ -1,15 +1,22 @@
 import { NextResponse } from "next/server";
-import { getUserId } from "@/lib/auth";
-import { getUserCredits, getUserLimits } from "@/db/queries";
+import { getAuthIdentifier } from "@/lib/auth";
+import { getProfileByIdentifier, getCreditsForProfile, getUserLimits } from "@/db/queries";
 
 export async function GET() {
-  const userId = await getUserId();
+  const identifier = await getAuthIdentifier();
+  const { userId } = identifier;
 
   if (!userId) {
     return NextResponse.json({ credits: 0, isPaid: false });
   }
 
-  const credits = await getUserCredits(userId);
+  const profile = await getProfileByIdentifier(identifier);
+  
+  if (!profile) {
+    return NextResponse.json({ credits: 0, isPaid: false });
+  }
+
+  const credits = await getCreditsForProfile(profile.id);
   const limits = getUserLimits(credits);
 
   return NextResponse.json({
@@ -19,4 +26,3 @@ export async function GET() {
     maxBoards: limits.maxBoards,
   });
 }
-

@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { removeBackground, pixelateImage } from "@/lib/fal";
-import { createVisionBoard, countBoardsByIdentifier, getUserLimits } from "@/db/queries";
-import { validateRequest, getUserCreditsCount } from "@/lib/auth";
+import { 
+  getOrCreateProfile, 
+  updateProfileAvatar, 
+  createVisionBoard, 
+  countBoardsForProfile, 
+  getUserLimits,
+  getCreditsForProfile,
+} from "@/db/queries";
+import { validateRequest } from "@/lib/auth";
 
 export async function POST(request: Request) {
   const { success, userId, visitorId, identifier, error, remaining } = await validateRequest("bg-removal");
@@ -14,17 +21,16 @@ export async function POST(request: Request) {
     );
   }
 
-  const credits = userId ? await getUserCreditsCount() : 0;
+  const profile = await getOrCreateProfile(identifier);
+  const credits = await getCreditsForProfile(profile.id);
   const limits = getUserLimits(credits);
-  const isPaid = limits.isPaid;
-  const boardCount = await countBoardsByIdentifier(identifier);
+  const boardCount = await countBoardsForProfile(profile.id);
 
   if (boardCount >= limits.maxBoards) {
-    // TODO: Polar - redirect to payment if not paid
     return NextResponse.json(
       { 
-        error: `Maximum ${limits.maxBoards} board${limits.maxBoards === 1 ? '' : 's'} allowed. ${!isPaid ? 'Sign up and upgrade for more.' : 'Delete an existing board to create a new one.'}`,
-        requiresUpgrade: !isPaid,
+        error: `Maximum ${limits.maxBoards} board${limits.maxBoards === 1 ? '' : 's'} allowed. ${!limits.isPaid ? 'Sign up and upgrade for more.' : 'Delete an existing board to create a new one.'}`,
+        requiresUpgrade: !limits.isPaid,
       },
       { status: 400 }
     );
@@ -42,21 +48,19 @@ export async function POST(request: Request) {
   const response = await fetch(noBgUrl);
   const imageBuffer = await response.arrayBuffer();
 
-  const blob = await put(`no-bg-${Date.now()}.png`, imageBuffer, {
+  const blob = await put(`${profile.id}/avatar-${Date.now()}.png`, imageBuffer, {
     access: "public",
     contentType: "image/png",
     token: process.env.BLOB_READ_WRITE_TOKEN,
   });
 
-  const board = await createVisionBoard({
-    visitorId: userId ? null : visitorId,
-    userId: userId ?? undefined,
-    userPhotoUrl: imageUrl,
-    userPhotoNoBgUrl: blob.url,
-  });
+  await updateProfileAvatar(profile.id, imageUrl, blob.url);
+
+  const board = await createVisionBoard(profile.id);
 
   return NextResponse.json({
     boardId: board.id,
+    profileId: profile.id,
     originalUrl: imageUrl,
     noBgUrl: blob.url,
   });

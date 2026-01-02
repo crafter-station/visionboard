@@ -20,6 +20,7 @@ interface PhotoUploadProps {
   visitorId: string | null;
   onUploadComplete: (data: {
     boardId: string;
+    profileId: string;
     originalUrl: string;
     noBgUrl: string;
   }) => void;

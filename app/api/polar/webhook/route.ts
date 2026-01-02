@@ -1,5 +1,5 @@
 import { Webhooks } from "@polar-sh/nextjs";
-import { addCredits, LIMITS } from "@/db/queries";
+import { addCredits, LIMITS, getOrCreateProfile } from "@/db/queries";
 
 export const POST = Webhooks({
   webhookSecret: process.env.POLAR_WEBHOOK_SECRET!,
@@ -12,8 +12,10 @@ export const POST = Webhooks({
       return;
     }
 
+    const profile = await getOrCreateProfile({ userId });
+
     const { alreadyProcessed } = await addCredits(
-      userId,
+      profile.id,
       LIMITS.PAID_CREDITS_PER_PURCHASE,
       order.id,
       order.customer?.id
@@ -24,7 +26,6 @@ export const POST = Webhooks({
       return;
     }
 
-    console.log(`Added ${LIMITS.PAID_CREDITS_PER_PURCHASE} credits to user ${userId}`);
+    console.log(`Added ${LIMITS.PAID_CREDITS_PER_PURCHASE} credits to profile ${profile.id} (user ${userId})`);
   },
 });
-
