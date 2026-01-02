@@ -39,15 +39,22 @@ const FRAME = {
   },
 };
 
-export function ImageCard({ imageUrl, phrase, isLoading, title }: ImageCardProps) {
-  const [loadingMessage, setLoadingMessage] = useState(() =>
-    LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)]
+export function ImageCard({
+  imageUrl,
+  phrase,
+  isLoading,
+  title,
+}: ImageCardProps) {
+  const [loadingMessage, setLoadingMessage] = useState(
+    () => LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)],
   );
 
   useEffect(() => {
     if (!isLoading) return;
     const interval = setInterval(() => {
-      setLoadingMessage(LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)]);
+      setLoadingMessage(
+        LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)],
+      );
     }, 2500);
     return () => clearInterval(interval);
   }, [isLoading]);
@@ -58,7 +65,7 @@ export function ImageCard({ imageUrl, phrase, isLoading, title }: ImageCardProps
         <Skeleton className="absolute inset-0" />
         <div className="absolute inset-0 animate-border-beam" />
         <div className="absolute inset-0 flex items-center justify-center">
-            <p className="text-xs text-muted-foreground">{loadingMessage}</p>
+          <p className="text-xs text-muted-foreground">{loadingMessage}</p>
         </div>
       </div>
     );

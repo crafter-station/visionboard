@@ -15,11 +15,8 @@ export async function getUserId(): Promise<string | null> {
 }
 
 export async function getAuthIdentifier(): Promise<UserIdentifier> {
-  const [userId, visitorId] = await Promise.all([
-    getUserId(),
-    getVisitorId(),
-  ]);
-  
+  const [userId, visitorId] = await Promise.all([getUserId(), getVisitorId()]);
+
   return { userId, visitorId };
 }
 
@@ -40,7 +37,9 @@ export async function isPaidUser(): Promise<boolean> {
   return credits > 0;
 }
 
-export async function validateRequest(rateLimitType: RateLimitType = "general"): Promise<{
+export async function validateRequest(
+  rateLimitType: RateLimitType = "general",
+): Promise<{
   success: boolean;
   visitorId: string | null;
   userId: string | null;
@@ -63,7 +62,10 @@ export async function validateRequest(rateLimitType: RateLimitType = "general"):
     };
   }
 
-  const { success, remaining } = await checkRateLimit(rateLimitKey, rateLimitType);
+  const { success, remaining } = await checkRateLimit(
+    rateLimitKey,
+    rateLimitType,
+  );
 
   if (!success) {
     return {
@@ -76,5 +78,11 @@ export async function validateRequest(rateLimitType: RateLimitType = "general"):
     };
   }
 
-  return { success: true, visitorId: visitorId ?? null, userId: userId ?? null, identifier, remaining };
+  return {
+    success: true,
+    visitorId: visitorId ?? null,
+    userId: userId ?? null,
+    identifier,
+    remaining,
+  };
 }

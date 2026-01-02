@@ -41,7 +41,12 @@ export const ratelimitGoals = new Ratelimit({
   prefix: "visionboard:goals",
 });
 
-export type RateLimitType = "general" | "image-gen" | "bg-removal" | "upload" | "goals";
+export type RateLimitType =
+  | "general"
+  | "image-gen"
+  | "bg-removal"
+  | "upload"
+  | "goals";
 
 const limiters: Record<RateLimitType, Ratelimit> = {
   general: ratelimitGeneral,
@@ -51,7 +56,10 @@ const limiters: Record<RateLimitType, Ratelimit> = {
   goals: ratelimitGoals,
 };
 
-export async function checkRateLimit(identifier: string, type: RateLimitType = "general") {
+export async function checkRateLimit(
+  identifier: string,
+  type: RateLimitType = "general",
+) {
   const limiter = limiters[type];
   const { success, remaining, reset } = await limiter.limit(identifier);
   return { success, remaining, reset };

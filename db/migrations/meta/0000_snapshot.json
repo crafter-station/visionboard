@@ -80,12 +80,8 @@
           "name": "goals_board_id_vision_boards_id_fk",
           "tableFrom": "goals",
           "tableTo": "vision_boards",
-          "columnsFrom": [
-            "board_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["board_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -145,9 +141,7 @@
         "purchases_polar_order_id_unique": {
           "name": "purchases_polar_order_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "polar_order_id"
-          ]
+          "columns": ["polar_order_id"]
         }
       },
       "policies": {},

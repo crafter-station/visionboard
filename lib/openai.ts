@@ -24,4 +24,3 @@ export async function generatePhrase(goal: string): Promise<string> {
 
   return response.choices[0].message.content?.trim() || "I will achieve this";
 }
-

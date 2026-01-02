@@ -16,12 +16,13 @@ import { goals } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 export async function POST(request: Request) {
-  const { success, userId, visitorId, identifier, error, remaining } = await validateRequest("image-gen");
+  const { success, userId, visitorId, identifier, error, remaining } =
+    await validateRequest("image-gen");
 
   if (!success || (!userId && !visitorId)) {
     return NextResponse.json(
       { error: error || "Unauthorized", remaining },
-      { status: 429 }
+      { status: 429 },
     );
   }
 
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
   if (!userImageUrl || !goalId || !goalPrompt) {
     return NextResponse.json(
       { error: "Missing required fields" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -63,11 +64,12 @@ export async function POST(request: Request) {
       if (credits <= 0) {
         return NextResponse.json(
           {
-            error: "No credits remaining. Purchase more to continue generating images.",
+            error:
+              "No credits remaining. Purchase more to continue generating images.",
             requiresUpgrade: true,
             credits: 0,
           },
-          { status: 400 }
+          { status: 400 },
         );
       }
     } else {
@@ -78,7 +80,7 @@ export async function POST(request: Request) {
             error: `Free limit of ${LIMITS.FREE_MAX_PHOTOS} images reached. Sign in and purchase credits for unlimited boards and 50 more images.`,
             requiresUpgrade: true,
           },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -98,7 +100,10 @@ export async function POST(request: Request) {
       token: process.env.BLOB_READ_WRITE_TOKEN,
     });
 
-    await updateGoal(goalId, { generatedImageUrl: blob.url, status: "completed" });
+    await updateGoal(goalId, {
+      generatedImageUrl: blob.url,
+      status: "completed",
+    });
 
     let newCredits = credits;
     if (limits.isPaid && !isRegeneration) {

@@ -45,20 +45,24 @@ export default function LandingPage() {
               <h1 className="text-base sm:text-xl font-bold tracking-tight truncate">
                 Vision Board
               </h1>
-              <p className="text-xs text-muted-foreground hidden sm:block">2026 Edition</p>
+              <p className="text-xs text-muted-foreground hidden sm:block">
+                2026 Edition
+              </p>
             </div>
             <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
               <ThemeSwitcherButton />
               <GithubBadge />
               <SignInButton mode="modal">
-                <Button variant="ghost" size="sm" className="hidden sm:inline-flex">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="hidden sm:inline-flex"
+                >
                   Sign In
                 </Button>
               </SignInButton>
               <SignUpButton mode="modal">
-                <Button size="sm">
-                  Sign Up
-                </Button>
+                <Button size="sm">Sign Up</Button>
               </SignUpButton>
             </div>
           </div>
@@ -80,7 +84,7 @@ export default function LandingPage() {
                 Create Your 2026 Vision Board
               </h2>
               <p className="text-base sm:text-lg text-muted-foreground">
-                Upload your photo and let AI place you in your dream scenarios. 
+                Upload your photo and let AI place you in your dream scenarios.
                 Visualize your goals and manifest your future.
               </p>
             </div>
@@ -91,9 +95,9 @@ export default function LandingPage() {
                   <ArrowRight className="size-4" />
                 </Button>
               </SignUpButton>
-              <Button 
-                variant="outline" 
-                size="lg" 
+              <Button
+                variant="outline"
+                size="lg"
                 className="w-full sm:w-auto"
                 onClick={() => router.push("/b")}
               >

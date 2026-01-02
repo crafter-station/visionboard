@@ -9,14 +9,14 @@ export async function POST() {
   if (!userId) {
     return NextResponse.json(
       { error: "Must be authenticated to migrate" },
-      { status: 401 }
+      { status: 401 },
     );
   }
 
   if (!visitorId) {
     return NextResponse.json(
       { error: "Missing visitor ID for migration" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 

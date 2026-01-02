@@ -54,29 +54,33 @@ export async function getProfileByUserId(userId: string) {
   });
 }
 
-export async function getProfileByIdentifier(identifier: UserIdentifier): Promise<UserProfile | undefined> {
+export async function getProfileByIdentifier(
+  identifier: UserIdentifier,
+): Promise<UserProfile | undefined> {
   const { userId, visitorId } = identifier;
-  
+
   if (userId) {
     return getProfileByUserId(userId);
   }
-  
+
   if (visitorId) {
     return getProfileByVisitorId(visitorId);
   }
-  
+
   return undefined;
 }
 
-export async function getOrCreateProfile(identifier: UserIdentifier): Promise<UserProfile> {
+export async function getOrCreateProfile(
+  identifier: UserIdentifier,
+): Promise<UserProfile> {
   const { userId, visitorId } = identifier;
-  
+
   let profile = await getProfileByIdentifier(identifier);
-  
+
   if (profile) {
     return profile;
   }
-  
+
   const id = generateProfileId();
   const [newProfile] = await db
     .insert(userProfiles)
@@ -86,14 +90,14 @@ export async function getOrCreateProfile(identifier: UserIdentifier): Promise<Us
       userId: userId ?? null,
     })
     .returning();
-  
+
   return newProfile;
 }
 
 export async function updateProfileAvatar(
   profileId: string,
   avatarOriginalUrl: string,
-  avatarNoBgUrl: string
+  avatarNoBgUrl: string,
 ) {
   const [profile] = await db
     .update(userProfiles)
@@ -107,14 +111,20 @@ export async function updateProfileAvatar(
   return profile;
 }
 
-export async function migrateProfileToUser(visitorId: string, userId: string): Promise<UserProfile | null> {
+export async function migrateProfileToUser(
+  visitorId: string,
+  userId: string,
+): Promise<UserProfile | null> {
   const visitorProfile = await getProfileByVisitorId(visitorId);
   if (!visitorProfile) return null;
-  
+
   const existingUserProfile = await getProfileByUserId(userId);
-  
+
   if (existingUserProfile) {
-    if (!existingUserProfile.avatarOriginalUrl && visitorProfile.avatarOriginalUrl) {
+    if (
+      !existingUserProfile.avatarOriginalUrl &&
+      visitorProfile.avatarOriginalUrl
+    ) {
       await db
         .update(userProfiles)
         .set({
@@ -124,18 +134,18 @@ export async function migrateProfileToUser(visitorId: string, userId: string): P
         })
         .where(eq(userProfiles.id, existingUserProfile.id));
     }
-    
+
     await db
       .update(visionBoards)
       .set({ profileId: existingUserProfile.id })
       .where(eq(visionBoards.profileId, visitorProfile.id));
-    
+
     await db.delete(userProfiles).where(eq(userProfiles.id, visitorProfile.id));
-    
+
     const updatedProfile = await getProfileByUserId(userId);
     return updatedProfile ?? null;
   }
-  
+
   const [updatedProfile] = await db
     .update(userProfiles)
     .set({
@@ -145,7 +155,7 @@ export async function migrateProfileToUser(visitorId: string, userId: string): P
     })
     .where(eq(userProfiles.id, visitorProfile.id))
     .returning();
-  
+
   return updatedProfile;
 }
 
@@ -166,7 +176,7 @@ export async function addCredits(
   profileId: string,
   amount: number,
   polarOrderId: string,
-  polarCustomerId?: string
+  polarCustomerId?: string,
 ): Promise<{ credits: number; alreadyProcessed: boolean }> {
   const existingPurchase = await db.query.purchases.findFirst({
     where: eq(purchases.polarOrderId, polarOrderId),
@@ -260,7 +270,9 @@ export async function getVisionBoardsByIdentifier(identifier: UserIdentifier) {
   return getVisionBoardsForProfile(profile.id);
 }
 
-export async function countBoardsForProfile(profileId: string): Promise<number> {
+export async function countBoardsForProfile(
+  profileId: string,
+): Promise<number> {
   const result = await db
     .select({ count: sql<number>`count(*)` })
     .from(visionBoards)
@@ -268,7 +280,9 @@ export async function countBoardsForProfile(profileId: string): Promise<number> 
   return Number(result[0]?.count ?? 0);
 }
 
-export async function countBoardsByIdentifier(identifier: UserIdentifier): Promise<number> {
+export async function countBoardsByIdentifier(
+  identifier: UserIdentifier,
+): Promise<number> {
   const profile = await getProfileByIdentifier(identifier);
   if (!profile) return 0;
   return countBoardsForProfile(profile.id);
@@ -282,7 +296,9 @@ export async function countGoalsByBoard(boardId: string): Promise<number> {
   return Number(result[0]?.count ?? 0);
 }
 
-export async function countGeneratedPhotosForProfile(profileId: string): Promise<number> {
+export async function countGeneratedPhotosForProfile(
+  profileId: string,
+): Promise<number> {
   const result = await db
     .select({ count: sql<number>`count(*)` })
     .from(goals)
@@ -290,13 +306,15 @@ export async function countGeneratedPhotosForProfile(profileId: string): Promise
     .where(
       and(
         eq(visionBoards.profileId, profileId),
-        isNotNull(goals.generatedImageUrl)
-      )
+        isNotNull(goals.generatedImageUrl),
+      ),
     );
   return Number(result[0]?.count ?? 0);
 }
 
-export async function countGeneratedPhotosByIdentifier(identifier: UserIdentifier): Promise<number> {
+export async function countGeneratedPhotosByIdentifier(
+  identifier: UserIdentifier,
+): Promise<number> {
   const profile = await getProfileByIdentifier(identifier);
   if (!profile) return 0;
   return countGeneratedPhotosForProfile(profile.id);
@@ -329,7 +347,13 @@ export async function deleteGoal(id: string) {
 }
 
 export async function updateGoalPositions(
-  updates: Array<{ id: string; positionX: number; positionY: number; width: number; height: number }>
+  updates: Array<{
+    id: string;
+    positionX: number;
+    positionY: number;
+    width: number;
+    height: number;
+  }>,
 ) {
   for (const update of updates) {
     await db
@@ -347,14 +371,13 @@ export async function updateGoalPositions(
 export async function getProfileWithBoards(identifier: UserIdentifier) {
   const profile = await getProfileByIdentifier(identifier);
   if (!profile) return null;
-  
+
   const boards = await getVisionBoardsForProfile(profile.id);
   const credits = await getCreditsForProfile(profile.id);
-  
+
   return {
     profile,
     boards,
     credits,
   };
 }
-

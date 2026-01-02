@@ -13,7 +13,7 @@ export function ProBadge({ credits, className }: ProBadgeProps) {
     <div
       className={cn(
         "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/30",
-        className
+        className,
       )}
     >
       <Crown className="size-3.5 text-amber-500" />
@@ -21,11 +21,8 @@ export function ProBadge({ credits, className }: ProBadgeProps) {
         Pro
       </span>
       {credits !== undefined && (
-        <span className="text-xs text-muted-foreground">
-          {credits} left
-        </span>
+        <span className="text-xs text-muted-foreground">{credits} left</span>
       )}
     </div>
   );
 }
-

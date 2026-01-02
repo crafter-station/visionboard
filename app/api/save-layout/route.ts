@@ -8,7 +8,12 @@ export async function POST(request: Request) {
   if (!success) {
     return NextResponse.json(
       { error: error || "Unauthorized" },
-      { status: 429, headers: remaining ? { "X-RateLimit-Remaining": String(remaining) } : {} }
+      {
+        status: 429,
+        headers: remaining
+          ? { "X-RateLimit-Remaining": String(remaining) }
+          : {},
+      },
     );
   }
 
@@ -17,7 +22,7 @@ export async function POST(request: Request) {
   if (!positions || !Array.isArray(positions)) {
     return NextResponse.json(
       { error: "Invalid positions data" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 

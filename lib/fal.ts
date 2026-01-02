@@ -5,8 +5,7 @@ fal.config({
 });
 
 export async function pixelateImage(imageUrl: string): Promise<string> {
-  
-    const result = await fal.subscribe("fal-ai/qwen-image-edit", {
+  const result = await fal.subscribe("fal-ai/qwen-image-edit", {
     input: {
       prompt: `8-bit pixel-art portrait, chest-up view. Keep the person's likeness and features recognizable. Use a simple solid color background. Style should be cartoonish, anime inspired, cute and tender soft. Maintain the original pose and expression.`,
       image_url: imageUrl,
@@ -28,7 +27,7 @@ export async function removeBackground(imageUrl: string): Promise<string> {
 
 export async function generateImageWithUser(
   userImageUrl: string,
-  goalPrompt: string
+  goalPrompt: string,
 ): Promise<string> {
   const stream = await fal.stream("fal-ai/gpt-image-1.5/edit", {
     input: {

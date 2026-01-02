@@ -67,7 +67,8 @@ export function BoardView({ board }: BoardViewProps) {
   const [usage, setUsage] = useState({ photos: 0 });
   const [maxPhotos, setMaxPhotos] = useState(3);
 
-  const isOwner = board.profile.userId === userId || board.profile.visitorId === visitorId;
+  const isOwner =
+    board.profile.userId === userId || board.profile.visitorId === visitorId;
   const userPhotoUrl = board.profile.avatarNoBgUrl ?? undefined;
 
   useEffect(() => {
@@ -79,7 +80,7 @@ export function BoardView({ board }: BoardViewProps) {
         phrase: g.phrase ?? undefined,
         isGenerating: g.status === "generating" || g.status === "pending",
         status: g.status,
-      }))
+      })),
     );
   }, [board.goals]);
 
@@ -137,7 +138,14 @@ export function BoardView({ board }: BoardViewProps) {
         const updatedGoals = await res.json();
         setGoals((prev) =>
           prev.map((g) => {
-            const updated = updatedGoals.find((u: { id: string; status: string; generatedImageUrl: string | null; phrase: string | null }) => u.id === g.id);
+            const updated = updatedGoals.find(
+              (u: {
+                id: string;
+                status: string;
+                generatedImageUrl: string | null;
+                phrase: string | null;
+              }) => u.id === g.id,
+            );
             if (!updated) return g;
             if (updated.status === "completed" || updated.status === "failed") {
               return {
@@ -149,7 +157,7 @@ export function BoardView({ board }: BoardViewProps) {
               };
             }
             return g;
-          })
+          }),
         );
       } catch {
         // Silently fail
@@ -211,8 +219,8 @@ export function BoardView({ board }: BoardViewProps) {
                   phrase: phraseResult.phrase,
                   status: "completed" as const,
                 }
-              : g
-          )
+              : g,
+          ),
         );
 
         if (imageResult.credits !== undefined) {
@@ -223,15 +231,17 @@ export function BoardView({ board }: BoardViewProps) {
         if (goalId) {
           setGoals((prev) =>
             prev.map((g) =>
-              g.id === goalId ? { ...g, isGenerating: false, status: "failed" as const } : g
-            )
+              g.id === goalId
+                ? { ...g, isGenerating: false, status: "failed" as const }
+                : g,
+            ),
           );
         }
       } finally {
         setIsAddingGoal(false);
       }
     },
-    [board.id, userPhotoUrl, visitorId]
+    [board.id, userPhotoUrl, visitorId],
   );
 
   const regenerateGoalImage = useCallback(
@@ -242,7 +252,11 @@ export function BoardView({ board }: BoardViewProps) {
       if (!goal) return;
 
       setGoals((prev) =>
-        prev.map((g) => (g.id === goalId ? { ...g, isGenerating: true, status: "generating" as const } : g))
+        prev.map((g) =>
+          g.id === goalId
+            ? { ...g, isGenerating: true, status: "generating" as const }
+            : g,
+        ),
       );
 
       try {
@@ -273,16 +287,20 @@ export function BoardView({ board }: BoardViewProps) {
                   phrase: phraseResult.phrase,
                   status: "completed" as const,
                 }
-              : g
-          )
+              : g,
+          ),
         );
       } catch {
         setGoals((prev) =>
-          prev.map((g) => (g.id === goalId ? { ...g, isGenerating: false, status: "failed" as const } : g))
+          prev.map((g) =>
+            g.id === goalId
+              ? { ...g, isGenerating: false, status: "failed" as const }
+              : g,
+          ),
         );
       }
     },
-    [goals, userPhotoUrl, visitorId]
+    [goals, userPhotoUrl, visitorId],
   );
 
   const deleteGoal = useCallback(
@@ -297,7 +315,7 @@ export function BoardView({ board }: BoardViewProps) {
         // Silently fail
       }
     },
-    [visitorId]
+    [visitorId],
   );
 
   const checkoutUrl = userId
@@ -306,7 +324,9 @@ export function BoardView({ board }: BoardViewProps) {
 
   const pendingGoals = goals.filter((g) => g.isGenerating).length;
   const effectivePhotosUsed = usage.photos + pendingGoals;
-  const canAddMoreGoals = isPaid ? credits > pendingGoals : effectivePhotosUsed < maxPhotos;
+  const canAddMoreGoals = isPaid
+    ? credits > pendingGoals
+    : effectivePhotosUsed < maxPhotos;
   const isAtLimit = !canAddMoreGoals;
 
   if (isLoadingAuth) {
@@ -324,7 +344,9 @@ export function BoardView({ board }: BoardViewProps) {
           <div className="container mx-auto px-4 py-6">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-bold tracking-tight">Agentic Vision Board</h1>
+                <h1 className="text-2xl font-bold tracking-tight">
+                  Agentic Vision Board
+                </h1>
                 <p className="text-sm text-muted-foreground">2026 Edition</p>
               </div>
               <div className="flex items-center gap-4">
@@ -369,34 +391,38 @@ export function BoardView({ board }: BoardViewProps) {
                 <h1 className="text-base sm:text-xl font-bold tracking-tight truncate">
                   Vision Board
                 </h1>
-                <p className="text-xs text-muted-foreground hidden sm:block">2026 Edition</p>
+                <p className="text-xs text-muted-foreground hidden sm:block">
+                  2026 Edition
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
               {isPaid && <ProBadge credits={credits} />}
               <ThemeSwitcherButton />
               <GithubBadge />
-              
+
               {isAuthenticated ? (
-                <UserButton 
+                <UserButton
                   afterSignOutUrl="/"
                   appearance={{
                     elements: {
-                      avatarBox: "size-8 sm:size-9"
-                    }
+                      avatarBox: "size-8 sm:size-9",
+                    },
                   }}
                 />
               ) : (
                 <div className="flex items-center gap-2">
                   <SignInButton mode="modal">
-                    <Button variant="ghost" size="sm" className="hidden sm:inline-flex">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="hidden sm:inline-flex"
+                    >
                       Sign In
                     </Button>
                   </SignInButton>
                   <SignUpButton mode="modal">
-                    <Button size="sm">
-                      Sign Up
-                    </Button>
+                    <Button size="sm">Sign Up</Button>
                   </SignUpButton>
                 </div>
               )}
@@ -460,4 +486,3 @@ export function BoardView({ board }: BoardViewProps) {
     </main>
   );
 }
-

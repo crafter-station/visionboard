@@ -26,7 +26,7 @@ function generateSeededRandom(seed: string): number {
   let hash = 0;
   for (let i = 0; i < seed.length; i++) {
     const char = seed.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash;
   }
   return Math.abs(hash % 10000) / 10000;
@@ -38,30 +38,32 @@ function getRandomRotation(id: string): number {
   return ROTATION_RANGE.min + random * range;
 }
 
-export default async function OGImage({ params }: { params: Promise<{ id: string }> }) {
+export default async function OGImage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
   const board = await getVisionBoard(id);
 
   if (!board) {
     return new ImageResponse(
-      (
-        <div
-          style={{
-            width: "100%",
-            height: "100%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: "#000",
-            color: "#fff",
-            fontSize: 48,
-            fontFamily: "system-ui",
-          }}
-        >
-          Board Not Found
-        </div>
-      ),
-      size
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#000",
+          color: "#fff",
+          fontSize: 48,
+          fontFamily: "system-ui",
+        }}
+      >
+        Board Not Found
+      </div>,
+      size,
     );
   }
 
@@ -70,120 +72,118 @@ export default async function OGImage({ params }: { params: Promise<{ id: string
   const cardHeight = Math.round(cardWidth * (FRAME.height / FRAME.width));
 
   return new ImageResponse(
-    (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        backgroundColor: "#fafafa",
+        fontFamily: "system-ui",
+      }}
+    >
       <div
         style={{
-          width: "100%",
-          height: "100%",
           display: "flex",
-          flexDirection: "column",
-          backgroundColor: "#fafafa",
-          fontFamily: "system-ui",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "20px 32px",
+          borderBottom: "1px solid #e5e5e5",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "20px 32px",
-            borderBottom: "1px solid #e5e5e5",
-          }}
-        >
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <span style={{ fontSize: 28, fontWeight: 700, color: "#0a0a0a" }}>
-              Vision Board
-            </span>
-            <span style={{ fontSize: 16, color: "#737373" }}>2026 Edition</span>
-          </div>
-        </div>
-
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "24px 32px",
-            gap: 16,
-          }}
-        >
-          {goalsWithImages.slice(0, 2).map((goal) => (
-            <div
-              key={goal.id}
-              style={{
-                width: cardWidth,
-                height: cardHeight,
-                position: "relative",
-                display: "flex",
-                transform: `rotate(${getRandomRotation(goal.id)}deg)`,
-              }}
-            >
-              {/* Frame overlay */}
-              <img
-                src="https://www.agenticboard.xyz/frames/frame-og.png"
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "contain",
-                }}
-              />
-              {goal.generatedImageUrl && (
-                <div
-                  style={{
-                    position: "absolute",
-                    left: `${(FRAME.photo.left / FRAME.width) * 100}%`,
-                    top: `${(FRAME.photo.top / FRAME.height) * 100}%`,
-                    width: `${(FRAME.photo.width / FRAME.width) * 100}%`,
-                    height: `${(FRAME.photo.height / FRAME.height) * 100}%`,
-                    overflow: "hidden",
-                    display: "flex",
-                  }}
-                >
-                  <img
-                    src={goal.generatedImageUrl}
-                    alt={goal.title}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }}
-                  />
-                </div>
-              )}
-              {goal.phrase && (
-                <div
-                  style={{
-                    position: "absolute",
-                    left: `${((FRAME.width - FRAME.text.width) / 2 / FRAME.width) * 100}%`,
-                    top: `${(FRAME.text.top / FRAME.height) * 100}%`,
-                    width: `${(FRAME.text.width / FRAME.width) * 100}%`,
-                    height: `${(FRAME.text.height / FRAME.height) * 100}%`,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: 8,
-                      fontWeight: 500,
-                      textAlign: "center",
-                      color: "#0a0a0a",
-                    }}
-                  >
-                    {goal.phrase}
-                  </span>
-                </div>
-              )}
-            </div>
-          ))}
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <span style={{ fontSize: 28, fontWeight: 700, color: "#0a0a0a" }}>
+            Vision Board
+          </span>
+          <span style={{ fontSize: 16, color: "#737373" }}>2026 Edition</span>
         </div>
       </div>
-    ),
-    size
+
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "24px 32px",
+          gap: 16,
+        }}
+      >
+        {goalsWithImages.slice(0, 2).map((goal) => (
+          <div
+            key={goal.id}
+            style={{
+              width: cardWidth,
+              height: cardHeight,
+              position: "relative",
+              display: "flex",
+              transform: `rotate(${getRandomRotation(goal.id)}deg)`,
+            }}
+          >
+            {/* Frame overlay */}
+            <img
+              src="https://www.agenticboard.xyz/frames/frame-og.png"
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: "contain",
+              }}
+            />
+            {goal.generatedImageUrl && (
+              <div
+                style={{
+                  position: "absolute",
+                  left: `${(FRAME.photo.left / FRAME.width) * 100}%`,
+                  top: `${(FRAME.photo.top / FRAME.height) * 100}%`,
+                  width: `${(FRAME.photo.width / FRAME.width) * 100}%`,
+                  height: `${(FRAME.photo.height / FRAME.height) * 100}%`,
+                  overflow: "hidden",
+                  display: "flex",
+                }}
+              >
+                <img
+                  src={goal.generatedImageUrl}
+                  alt={goal.title}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                  }}
+                />
+              </div>
+            )}
+            {goal.phrase && (
+              <div
+                style={{
+                  position: "absolute",
+                  left: `${((FRAME.width - FRAME.text.width) / 2 / FRAME.width) * 100}%`,
+                  top: `${(FRAME.text.top / FRAME.height) * 100}%`,
+                  width: `${(FRAME.text.width / FRAME.width) * 100}%`,
+                  height: `${(FRAME.text.height / FRAME.height) * 100}%`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 8,
+                    fontWeight: 500,
+                    textAlign: "center",
+                    color: "#0a0a0a",
+                  }}
+                >
+                  {goal.phrase}
+                </span>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>,
+    size,
   );
 }

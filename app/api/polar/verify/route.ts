@@ -42,7 +42,10 @@ export async function GET(request: Request) {
 
     const customerExternalId = checkout.customerExternalId;
     if (customerExternalId !== userId) {
-      return NextResponse.json({ error: "Checkout does not belong to this user" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Checkout does not belong to this user" },
+        { status: 403 },
+      );
     }
 
     const profile = await getOrCreateProfile({ userId });
@@ -51,7 +54,7 @@ export async function GET(request: Request) {
       profile.id,
       LIMITS.PAID_CREDITS_PER_PURCHASE,
       checkoutId,
-      checkout.customerId ?? undefined
+      checkout.customerId ?? undefined,
     );
 
     const credits = await getCreditsForProfile(profile.id);
@@ -66,7 +69,9 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("Error verifying checkout:", error);
-    return NextResponse.json({ error: "Failed to verify checkout" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to verify checkout" },
+      { status: 500 },
+    );
   }
 }
-

@@ -64,7 +64,9 @@ export function ExistingBoards({
               />
             </div>
             <div className="flex-1 text-center sm:text-left">
-              <h3 className="text-lg sm:text-xl font-semibold mb-1">Create New Vision Board</h3>
+              <h3 className="text-lg sm:text-xl font-semibold mb-1">
+                Create New Vision Board
+              </h3>
               <p className="text-sm text-muted-foreground mb-4">
                 Use your existing photo to create another board with new goals
               </p>
@@ -79,16 +81,24 @@ export function ExistingBoards({
 
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <h3 className="text-base sm:text-lg font-semibold">Your Vision Boards</h3>
+          <h3 className="text-base sm:text-lg font-semibold">
+            Your Vision Boards
+          </h3>
           {limits && usage && (
             <div className="text-xs sm:text-sm text-muted-foreground">
-              {usage.boards}/{limits.MAX_BOARDS_PER_USER >= 99 ? "unlimited" : limits.MAX_BOARDS_PER_USER} boards | {usage.photos}/{limits.MAX_PHOTOS_PER_USER} images
+              {usage.boards}/
+              {limits.MAX_BOARDS_PER_USER >= 99
+                ? "unlimited"
+                : limits.MAX_BOARDS_PER_USER}{" "}
+              boards | {usage.photos}/{limits.MAX_PHOTOS_PER_USER} images
             </div>
           )}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           {boards.map((board) => {
-            const completedGoals = board.goals.filter((g) => g.generatedImageUrl).length;
+            const completedGoals = board.goals.filter(
+              (g) => g.generatedImageUrl,
+            ).length;
             const totalGoals = board.goals.length;
 
             return (
@@ -100,11 +110,11 @@ export function ExistingBoards({
                 <div className="flex gap-3 sm:gap-4">
                   <div className="size-14 sm:size-16 rounded-md overflow-hidden bg-muted flex-shrink-0">
                     {avatarUrl && (
-                    <img
+                      <img
                         src={avatarUrl}
-                      alt="Profile"
-                      className="w-full h-full object-cover object-top"
-                    />
+                        alt="Profile"
+                        className="w-full h-full object-cover object-top"
+                      />
                     )}
                   </div>
                   <div className="flex-1 min-w-0 py-0.5">
@@ -136,12 +146,16 @@ export function ExistingBoards({
         </div>
       </div>
 
-      <Dialog open={!!boardToDelete} onOpenChange={(open) => !open && setBoardToDelete(null)}>
+      <Dialog
+        open={!!boardToDelete}
+        onOpenChange={(open) => !open && setBoardToDelete(null)}
+      >
         <DialogContent className="sm:max-w-md rounded-lg">
           <DialogHeader>
             <DialogTitle>Delete Vision Board</DialogTitle>
             <DialogDescription>
-              This will permanently delete this board and all its goals. This action cannot be undone.
+              This will permanently delete this board and all its goals. This
+              action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">

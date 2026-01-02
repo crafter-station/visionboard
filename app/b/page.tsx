@@ -23,7 +23,9 @@ function CheckoutVerificationHandler({
 }) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [verificationStatus, setVerificationStatus] = useState<"idle" | "verifying" | "success" | "error">("idle");
+  const [verificationStatus, setVerificationStatus] = useState<
+    "idle" | "verifying" | "success" | "error"
+  >("idle");
   const verificationAttemptedRef = useRef(false);
 
   const handleContinue = () => {
@@ -80,7 +82,9 @@ function CheckoutVerificationHandler({
             <CheckCircle className="size-12 mx-auto text-green-500" />
             <div>
               <h3 className="font-semibold text-lg">Payment Successful</h3>
-              <p className="text-sm text-muted-foreground">Your credits have been added!</p>
+              <p className="text-sm text-muted-foreground">
+                Your credits have been added!
+              </p>
             </div>
             <Button onClick={handleContinue} className="w-full">
               Continue
@@ -90,11 +94,15 @@ function CheckoutVerificationHandler({
         {verificationStatus === "error" && (
           <>
             <div className="size-12 mx-auto rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
-              <span className="text-2xl text-yellow-600 dark:text-yellow-500">!</span>
+              <span className="text-2xl text-yellow-600 dark:text-yellow-500">
+                !
+              </span>
             </div>
             <div>
               <h3 className="font-semibold text-lg">Processing Payment</h3>
-              <p className="text-sm text-muted-foreground">Your payment is being processed. Credits will appear shortly.</p>
+              <p className="text-sm text-muted-foreground">
+                Your payment is being processed. Credits will appear shortly.
+              </p>
             </div>
             <Button onClick={handleContinue} className="w-full">
               Continue
@@ -143,7 +151,8 @@ export default function DashboardPage() {
     );
   }
 
-  const canCreateNewBoard = !limits || !usage || usage.boards < limits.MAX_BOARDS_PER_USER;
+  const canCreateNewBoard =
+    !limits || !usage || usage.boards < limits.MAX_BOARDS_PER_USER;
   const hasExistingBoards = existingBoards.length > 0;
 
   const handleSelectBoard = (board: { id: string }) => {
@@ -159,7 +168,10 @@ export default function DashboardPage() {
   return (
     <main className="min-h-screen bg-background flex flex-col">
       <Suspense fallback={null}>
-        <CheckoutVerificationHandler onVerified={refetchBoards} setIsVerifying={setIsVerifyingPayment} />
+        <CheckoutVerificationHandler
+          onVerified={refetchBoards}
+          setIsVerifying={setIsVerifyingPayment}
+        />
       </Suspense>
       <header className="border-b sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50">
         <div className="container mx-auto px-3 py-3 sm:px-4 sm:py-4">
@@ -168,33 +180,37 @@ export default function DashboardPage() {
               <h1 className="text-base sm:text-xl font-bold tracking-tight truncate">
                 Vision Board
               </h1>
-              <p className="text-xs text-muted-foreground hidden sm:block">2026 Edition</p>
+              <p className="text-xs text-muted-foreground hidden sm:block">
+                2026 Edition
+              </p>
             </div>
             <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
               {isPaid && <ProBadge credits={credits} />}
               <ThemeSwitcherButton />
               <GithubBadge />
-              
+
               {isAuthenticated ? (
-                <UserButton 
+                <UserButton
                   afterSignOutUrl="/"
                   appearance={{
                     elements: {
-                      avatarBox: "size-8 sm:size-9"
-                    }
+                      avatarBox: "size-8 sm:size-9",
+                    },
                   }}
                 />
               ) : (
                 <div className="flex items-center gap-2">
                   <SignInButton mode="modal">
-                    <Button variant="ghost" size="sm" className="hidden sm:inline-flex">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="hidden sm:inline-flex"
+                    >
                       Sign In
                     </Button>
                   </SignInButton>
                   <SignUpButton mode="modal">
-                    <Button size="sm">
-                      Sign Up
-                    </Button>
+                    <Button size="sm">Sign Up</Button>
                   </SignUpButton>
                 </div>
               )}
@@ -219,11 +235,14 @@ export default function DashboardPage() {
                   Start with Your Photo
                 </h2>
                 <p className="text-sm sm:text-base text-muted-foreground">
-                  Upload a photo of yourself. We will remove the background and use
-                  it to place you in your dream scenarios.
+                  Upload a photo of yourself. We will remove the background and
+                  use it to place you in your dream scenarios.
                 </p>
               </div>
-              <PhotoUpload visitorId={visitorId} onUploadComplete={onUploadComplete} />
+              <PhotoUpload
+                visitorId={visitorId}
+                onUploadComplete={onUploadComplete}
+              />
             </div>
           </div>
         )}
@@ -235,7 +254,9 @@ export default function DashboardPage() {
               profile={profile}
               onSelectBoard={handleSelectBoard}
               onDeleteBoard={deleteBoard}
-              onCreateNewBoard={canCreateNewBoard ? handleCreateBoard : undefined}
+              onCreateNewBoard={
+                canCreateNewBoard ? handleCreateBoard : undefined
+              }
               limits={limits}
               usage={usage}
             />
@@ -244,7 +265,7 @@ export default function DashboardPage() {
               <UpgradeCTA
                 isAuthenticated={isAuthenticated}
                 checkoutUrl={checkoutUrl}
-                message={`You've reached the limit of ${limits?.MAX_BOARDS_PER_USER} board${(limits?.MAX_BOARDS_PER_USER ?? 1) === 1 ? '' : 's'}. Upgrade for unlimited boards and 50 more images.`}
+                message={`You've reached the limit of ${limits?.MAX_BOARDS_PER_USER} board${(limits?.MAX_BOARDS_PER_USER ?? 1) === 1 ? "" : "s"}. Upgrade for unlimited boards and 50 more images.`}
               />
             )}
           </div>
@@ -255,4 +276,3 @@ export default function DashboardPage() {
     </main>
   );
 }
-

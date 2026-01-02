@@ -18,7 +18,7 @@ export const POST = Webhooks({
       profile.id,
       LIMITS.PAID_CREDITS_PER_PURCHASE,
       order.id,
-      order.customer?.id
+      order.customer?.id,
     );
 
     if (alreadyProcessed) {
@@ -26,6 +26,8 @@ export const POST = Webhooks({
       return;
     }
 
-    console.log(`Added ${LIMITS.PAID_CREDITS_PER_PURCHASE} credits to profile ${profile.id} (user ${userId})`);
+    console.log(
+      `Added ${LIMITS.PAID_CREDITS_PER_PURCHASE} credits to profile ${profile.id} (user ${userId})`,
+    );
   },
 });

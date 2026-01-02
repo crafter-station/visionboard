@@ -9,7 +9,7 @@ export function GithubBadge() {
     const fetchGithubStars = async () => {
       try {
         const response = await fetch(
-          "https://api.github.com/repos/crafter-station/visionboard"
+          "https://api.github.com/repos/crafter-station/visionboard",
         );
         if (response.ok) {
           const data = await response.json();

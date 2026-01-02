@@ -38,7 +38,9 @@ export function PhotoUpload({ visitorId, onUploadComplete }: PhotoUploadProps) {
   useEffect(() => {
     if (!isProcessing) return;
     const interval = setInterval(() => {
-      setLoadingMessage(LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)]);
+      setLoadingMessage(
+        LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)],
+      );
     }, 2000);
     return () => clearInterval(interval);
   }, [isProcessing]);
@@ -120,7 +122,7 @@ export function PhotoUpload({ visitorId, onUploadComplete }: PhotoUploadProps) {
       const file = e.dataTransfer.files[0];
       if (file) processFile(file);
     },
-    [visitorId]
+    [visitorId],
   );
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -149,7 +151,7 @@ export function PhotoUpload({ visitorId, onUploadComplete }: PhotoUploadProps) {
           isDragging
             ? "border-foreground bg-accent/50"
             : "border-muted-foreground/30 hover:border-foreground/50 active:border-foreground/50 active:bg-accent/30",
-          preview && "border-solid"
+          preview && "border-solid",
         )}
       >
         {preview ? (
@@ -187,7 +189,9 @@ export function PhotoUpload({ visitorId, onUploadComplete }: PhotoUploadProps) {
               {isMobile ? "Tap to upload" : "Upload your photo"}
             </p>
             <p className="text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4 text-center">
-              {isMobile ? "Choose from gallery or camera" : "Drag and drop or click to select"}
+              {isMobile
+                ? "Choose from gallery or camera"
+                : "Drag and drop or click to select"}
             </p>
             <input
               type="file"

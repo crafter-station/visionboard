@@ -50,7 +50,7 @@ export function ThemeSwitcherButton({
     const y = event.clientY;
     const endRadius = Math.hypot(
       Math.max(x, window.innerWidth - x),
-      Math.max(y, window.innerHeight - y)
+      Math.max(y, window.innerHeight - y),
     );
 
     const transition = document.startViewTransition(() => {
@@ -70,7 +70,7 @@ export function ThemeSwitcherButton({
         duration: 500,
         easing: "ease-out",
         pseudoElement: "::view-transition-new(root)",
-      }
+      },
     );
   };
 

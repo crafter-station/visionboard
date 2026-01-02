@@ -1,10 +1,4 @@
-import {
-  pgTable,
-  text,
-  timestamp,
-  integer,
-  pgEnum,
-} from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, integer, pgEnum } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 export const goalStatusEnum = pgEnum("goal_status", [
@@ -69,19 +63,25 @@ export const purchases = pgTable("purchases", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const userProfilesRelations = relations(userProfiles, ({ many, one }) => ({
-  boards: many(visionBoards),
-  credits: one(userCredits),
-  purchases: many(purchases),
-}));
-
-export const visionBoardsRelations = relations(visionBoards, ({ one, many }) => ({
-  profile: one(userProfiles, {
-    fields: [visionBoards.profileId],
-    references: [userProfiles.id],
+export const userProfilesRelations = relations(
+  userProfiles,
+  ({ many, one }) => ({
+    boards: many(visionBoards),
+    credits: one(userCredits),
+    purchases: many(purchases),
   }),
-  goals: many(goals),
-}));
+);
+
+export const visionBoardsRelations = relations(
+  visionBoards,
+  ({ one, many }) => ({
+    profile: one(userProfiles, {
+      fields: [visionBoards.profileId],
+      references: [userProfiles.id],
+    }),
+    goals: many(goals),
+  }),
+);
 
 export const goalsRelations = relations(goals, ({ one }) => ({
   board: one(visionBoards, {

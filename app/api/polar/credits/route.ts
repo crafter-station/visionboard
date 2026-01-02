@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { getAuthIdentifier } from "@/lib/auth";
-import { getProfileByIdentifier, getCreditsForProfile, getUserLimits } from "@/db/queries";
+import {
+  getProfileByIdentifier,
+  getCreditsForProfile,
+  getUserLimits,
+} from "@/db/queries";
 
 export async function GET() {
   const identifier = await getAuthIdentifier();
@@ -11,7 +15,7 @@ export async function GET() {
   }
 
   const profile = await getProfileByIdentifier(identifier);
-  
+
   if (!profile) {
     return NextResponse.json({ credits: 0, isPaid: false });
   }

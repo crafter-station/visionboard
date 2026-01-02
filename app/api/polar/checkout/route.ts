@@ -7,4 +7,3 @@ export const GET = Checkout({
   successUrl: `${appUrl}/b?checkout_id={CHECKOUT_ID}`,
   server: "production",
 });
-

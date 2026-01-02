@@ -29,14 +29,13 @@ interface TimeBucket {
   results: UsageResult[];
 }
 
-
 interface UsageResponse {
   time_series: TimeBucket[];
 }
 
 async function fetchUsage(
   startDate: Date,
-  endDate: Date
+  endDate: Date,
 ): Promise<UsageResponse | null> {
   const params = new URLSearchParams({
     start: startDate.toISOString(),
@@ -59,7 +58,7 @@ async function fetchUsage(
 }
 
 function aggregateUsage(
-  usageData: UsageResponse
+  usageData: UsageResponse,
 ): Map<string, { quantity: number; unit: string }> {
   const aggregated = new Map<string, { quantity: number; unit: string }>();
 
@@ -92,7 +91,9 @@ async function main() {
   console.log("=".repeat(60));
   console.log("FAL.AI USAGE REPORT");
   console.log("=".repeat(60));
-  console.log(`Period: ${startDate.toDateString()} - ${endDate.toDateString()}`);
+  console.log(
+    `Period: ${startDate.toDateString()} - ${endDate.toDateString()}`,
+  );
   console.log("");
 
   const usageData = await fetchUsage(startDate, endDate);
@@ -128,7 +129,9 @@ async function main() {
 
       console.log(`\nModel: ${model}`);
       console.log(`  Requests: ${usage.quantity}`);
-      console.log(`  Unit Price: ${formatCurrency(pricing.price)}/${pricing.unit}`);
+      console.log(
+        `  Unit Price: ${formatCurrency(pricing.price)}/${pricing.unit}`,
+      );
       console.log(`  Subtotal: ${formatCurrency(cost)}`);
     } else if (usage) {
       const estimatedPrice = 0.05;
@@ -138,7 +141,9 @@ async function main() {
 
       console.log(`\nModel: ${model}`);
       console.log(`  Requests: ${usage.quantity}`);
-      console.log(`  Unit Price: ~${formatCurrency(estimatedPrice)}/request (estimated)`);
+      console.log(
+        `  Unit Price: ~${formatCurrency(estimatedPrice)}/request (estimated)`,
+      );
       console.log(`  Subtotal: ~${formatCurrency(cost)}`);
     } else {
       console.log(`\nModel: ${model}`);
@@ -156,12 +161,16 @@ async function main() {
   let allModelsCost = 0;
   for (const [endpointId, usage] of aggregatedUsage) {
     const pricing = KNOWN_PRICING[endpointId];
-    const cost = pricing ? usage.quantity * pricing.price : usage.quantity * 0.05;
+    const cost = pricing
+      ? usage.quantity * pricing.price
+      : usage.quantity * 0.05;
     allModelsCost += cost;
 
     console.log(`\n${endpointId}`);
     console.log(`  Requests: ${usage.quantity} ${usage.unit}`);
-    console.log(`  Cost: ${formatCurrency(cost)}${!pricing ? " (estimated)" : ""}`);
+    console.log(
+      `  Cost: ${formatCurrency(cost)}${!pricing ? " (estimated)" : ""}`,
+    );
   }
 
   console.log("\n" + "-".repeat(60));
@@ -187,20 +196,28 @@ async function main() {
     (KNOWN_PRICING["fal-ai/gpt-image-1.5/edit"]?.price || 0.08);
 
   console.log(`\nCost per complete vision board (3 API calls):`);
-  console.log(`  Pixelate: ${formatCurrency(KNOWN_PRICING["fal-ai/qwen-image-edit"]?.price || 0.035)}`);
-  console.log(`  Remove BG: ${formatCurrency(KNOWN_PRICING["fal-ai/birefnet"]?.price || 0.01)}`);
-  console.log(`  Generate: ${formatCurrency(KNOWN_PRICING["fal-ai/gpt-image-1.5/edit"]?.price || 0.08)}`);
+  console.log(
+    `  Pixelate: ${formatCurrency(KNOWN_PRICING["fal-ai/qwen-image-edit"]?.price || 0.035)}`,
+  );
+  console.log(
+    `  Remove BG: ${formatCurrency(KNOWN_PRICING["fal-ai/birefnet"]?.price || 0.01)}`,
+  );
+  console.log(
+    `  Generate: ${formatCurrency(KNOWN_PRICING["fal-ai/gpt-image-1.5/edit"]?.price || 0.08)}`,
+  );
   console.log(`  TOTAL: ${formatCurrency(costPerBoard)}`);
 
   console.log(`\nRecommended One-Time Payment Tiers:`);
-  
+
   const margins = [1.5, 2.0, 2.5, 3.0, 4.0];
 
   console.log("\n  Per-Board Pricing (with margin):");
   for (const margin of margins) {
     const price = costPerBoard * margin;
     const profit = price - costPerBoard;
-    console.log(`    ${margin}x: ${formatCurrency(price)} (profit: ${formatCurrency(profit)})`);
+    console.log(
+      `    ${margin}x: ${formatCurrency(price)} (profit: ${formatCurrency(profit)})`,
+    );
   }
 
   console.log("\n  Suggested Price Points:");
@@ -208,7 +225,9 @@ async function main() {
   for (const price of pricePoints) {
     const margin = price / costPerBoard;
     const profit = price - costPerBoard;
-    console.log(`    $${price.toFixed(2)}: ${margin.toFixed(1)}x margin (profit: ${formatCurrency(profit)})`);
+    console.log(
+      `    $${price.toFixed(2)}: ${margin.toFixed(1)}x margin (profit: ${formatCurrency(profit)})`,
+    );
   }
 
   console.log("\n  Bundle Pricing Suggestions:");
@@ -223,7 +242,7 @@ async function main() {
     const profit = bundle.price - cost;
     const perBoard = bundle.price / bundle.boards;
     console.log(
-      `    ${bundle.boards} board${bundle.boards > 1 ? "s" : ""}: $${bundle.price.toFixed(2)} ($${perBoard.toFixed(2)}/each, profit: ${formatCurrency(profit)})`
+      `    ${bundle.boards} board${bundle.boards > 1 ? "s" : ""}: $${bundle.price.toFixed(2)} ($${perBoard.toFixed(2)}/each, profit: ${formatCurrency(profit)})`,
     );
   }
 
@@ -234,10 +253,9 @@ async function main() {
     const costs = users * costPerBoard;
     const profit = revenue - costs;
     console.log(
-      `    ${users.toLocaleString()} sales: $${revenue.toFixed(2)} revenue, $${costs.toFixed(2)} cost, $${profit.toFixed(2)} profit`
+      `    ${users.toLocaleString()} sales: $${revenue.toFixed(2)} revenue, $${costs.toFixed(2)} cost, $${profit.toFixed(2)} profit`,
     );
   }
 }
 
 main().catch(console.error);
-

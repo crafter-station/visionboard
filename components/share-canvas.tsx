@@ -12,7 +12,7 @@ function generateSeededRandom(seed: string): number {
   let hash = 0;
   for (let i = 0; i < seed.length; i++) {
     const char = seed.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash;
   }
   return Math.abs(hash % 10000) / 10000;
@@ -27,7 +27,10 @@ function getAlternatingRotation(id: string, index: number): number {
 }
 
 interface ShareCanvasProps {
-  board: VisionBoard & { goals: Goal[]; profile?: { avatarNoBgUrl: string | null } | null };
+  board: VisionBoard & {
+    goals: Goal[];
+    profile?: { avatarNoBgUrl: string | null } | null;
+  };
 }
 
 export function ShareCanvas({ board }: ShareCanvasProps) {

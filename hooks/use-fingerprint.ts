@@ -29,4 +29,3 @@ export function useFingerprint() {
 
   return { visitorId, isLoading };
 }
-

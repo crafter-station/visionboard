@@ -19,7 +19,7 @@ export async function GET() {
   }
 
   const profile = await getProfileByIdentifier(identifier);
-  
+
   if (!profile) {
     return NextResponse.json({
       boards: [],
@@ -45,7 +45,7 @@ export async function GET() {
 
   const totalPhotos = boards.reduce(
     (acc, board) => acc + board.goals.filter((g) => g.generatedImageUrl).length,
-    0
+    0,
   );
 
   return NextResponse.json({
@@ -81,11 +81,17 @@ export async function POST(request: Request) {
   const profile = await getProfileByIdentifier(identifier);
 
   if (!profile) {
-    return NextResponse.json({ error: "Profile not found. Upload a photo first." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Profile not found. Upload a photo first." },
+      { status: 400 },
+    );
   }
 
   if (!profile.avatarNoBgUrl) {
-    return NextResponse.json({ error: "No avatar found. Upload a photo first." }, { status: 400 });
+    return NextResponse.json(
+      { error: "No avatar found. Upload a photo first." },
+      { status: 400 },
+    );
   }
 
   const credits = await getCreditsForProfile(profile.id);
@@ -94,11 +100,11 @@ export async function POST(request: Request) {
 
   if (boardCount >= limits.maxBoards) {
     return NextResponse.json(
-      { 
+      {
         error: "Maximum boards limit reached",
         requiresUpgrade: !limits.isPaid,
       },
-      { status: 400 }
+      { status: 400 },
     );
   }
 

@@ -63,7 +63,9 @@ export function GalleryView({
     }
   };
 
-  const allGenerated = goals.length > 0 && goals.every((g) => g.generatedImageUrl && !g.isGenerating);
+  const allGenerated =
+    goals.length > 0 &&
+    goals.every((g) => g.generatedImageUrl && !g.isGenerating);
 
   return (
     <div className="w-full space-y-6">
@@ -161,7 +163,9 @@ export function GalleryView({
                 <div className="size-12 rounded-full bg-muted flex items-center justify-center">
                   <Plus className="size-6" />
                 </div>
-                <p className="text-sm text-muted-foreground">Sign up to add more</p>
+                <p className="text-sm text-muted-foreground">
+                  Sign up to add more
+                </p>
               </div>
             </div>
           </SignUpButton>
@@ -177,7 +181,9 @@ export function GalleryView({
               <div className="size-12 rounded-full bg-muted flex items-center justify-center">
                 <Plus className="size-6" />
               </div>
-              <p className="text-sm text-muted-foreground">Upgrade to add more</p>
+              <p className="text-sm text-muted-foreground">
+                Upgrade to add more
+              </p>
             </div>
           </a>
         )}
@@ -194,36 +200,38 @@ export function GalleryView({
               isLoading={goal.isGenerating}
               title={goal.title}
             />
-            {goal.generatedImageUrl && !goal.isGenerating && (onRegenerate || onDeleteGoal) && (
-              <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                {onRegenerate && (
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    className="size-8"
-                    onClick={() => onRegenerate(goal.id)}
-                    title="Regenerate"
-                  >
-                    <RefreshCw className="size-4" />
-                  </Button>
-                )}
-                {onDeleteGoal && (
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    className="size-8"
-                    onClick={() => {
-                      if (confirm("Delete this goal?")) {
-                        onDeleteGoal(goal.id);
-                      }
-                    }}
-                    title="Delete"
-                  >
-                    <Trash2 className="size-4 text-destructive" />
-                  </Button>
-                )}
-              </div>
-            )}
+            {goal.generatedImageUrl &&
+              !goal.isGenerating &&
+              (onRegenerate || onDeleteGoal) && (
+                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                  {onRegenerate && (
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="size-8"
+                      onClick={() => onRegenerate(goal.id)}
+                      title="Regenerate"
+                    >
+                      <RefreshCw className="size-4" />
+                    </Button>
+                  )}
+                  {onDeleteGoal && (
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="size-8"
+                      onClick={() => {
+                        if (confirm("Delete this goal?")) {
+                          onDeleteGoal(goal.id);
+                        }
+                      }}
+                      title="Delete"
+                    >
+                      <Trash2 className="size-4 text-destructive" />
+                    </Button>
+                  )}
+                </div>
+              )}
           </div>
         ))}
       </div>
@@ -238,4 +246,3 @@ export function GalleryView({
     </div>
   );
 }
-

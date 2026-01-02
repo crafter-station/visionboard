@@ -12,7 +12,9 @@ interface AuthState {
   hasMigrated: boolean;
 }
 
-export function useAuth(): AuthState & { triggerMigration: () => Promise<void> } {
+export function useAuth(): AuthState & {
+  triggerMigration: () => Promise<void>;
+} {
   const { user, isLoaded: clerkLoaded } = useUser();
   const { visitorId, isLoading: fingerprintLoading } = useFingerprint();
   const [hasMigrated, setHasMigrated] = useState(false);
@@ -61,4 +63,3 @@ export function useAuth(): AuthState & { triggerMigration: () => Promise<void> }
     triggerMigration,
   };
 }
-

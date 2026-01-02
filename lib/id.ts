@@ -7,4 +7,3 @@ export function generateBoardId(): string {
 export function generateGoalId(): string {
   return nanoid(12);
 }
-

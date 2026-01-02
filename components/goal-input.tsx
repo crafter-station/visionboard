@@ -73,7 +73,9 @@ export function GoalInput({
   return (
     <div className="w-full max-w-2xl mx-auto space-y-5 sm:space-y-6">
       <div className="text-center space-y-2">
-        <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Define Your 2026 Goals</h2>
+        <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
+          Define Your 2026 Goals
+        </h2>
         <p className="text-sm sm:text-base text-muted-foreground">
           What do you want to achieve? Add up to {maxGoals} goals.
         </p>
@@ -96,7 +98,7 @@ export function GoalInput({
             key={goal.id}
             className={cn(
               "group flex items-center gap-2 sm:gap-3 p-3 sm:p-4 border bg-card transition-all",
-              goal.isGenerating && "opacity-70"
+              goal.isGenerating && "opacity-70",
             )}
           >
             <span className="text-xs sm:text-sm font-mono text-muted-foreground w-5 sm:w-6 flex-shrink-0">
