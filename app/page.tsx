@@ -27,6 +27,7 @@ export default function Home() {
     existingBoards,
     limits,
     usage,
+    userId,
     onUploadComplete,
     generateAllImages,
     regenerateGoalImage,
@@ -37,6 +38,10 @@ export default function Home() {
     savePositions,
     createBoardWithExistingPhoto,
   } = useVisionBoard();
+
+  const checkoutUrl = userId
+    ? `/api/polar/checkout?products=${process.env.NEXT_PUBLIC_POLAR_PRODUCT_ID}&customerExternalId=${userId}`
+    : null;
 
   if (isLoadingAuth || isLoadingBoards) {
     return (
@@ -190,9 +195,10 @@ export default function Home() {
                   </p>
                 </div>
                 {isAuthenticated ? (
-                  // TODO: Polar - Link to payment/upgrade page
-                  <Button disabled>
-                    Upgrade Coming Soon
+                  <Button asChild>
+                    <a href={checkoutUrl || "#"}>
+                      Upgrade - $5 for more
+                    </a>
                   </Button>
                 ) : (
                   <SignUpButton mode="modal">
