@@ -68,7 +68,7 @@ function CheckoutVerificationHandler({
 
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 safe-area-inset">
-      <div className="bg-card border rounded-lg p-6 sm:p-8 max-w-sm w-full text-center space-y-4 shadow-lg">
+      <div className="bg-card border rounded-lg p-6 sm:p-8 max-w-sm w-full text-center space-y-4 shadow-lg relative z-10">
         {verificationStatus === "verifying" && (
           <>
             <Loader2 className="size-12 animate-spin mx-auto text-primary" />
@@ -88,6 +88,7 @@ function CheckoutVerificationHandler({
               </p>
             </div>
             <Button
+              type="button"
               onClick={handleContinue}
               className="w-full min-h-[44px] touch-manipulation"
             >
@@ -109,6 +110,7 @@ function CheckoutVerificationHandler({
               </p>
             </div>
             <Button
+              type="button"
               onClick={handleContinue}
               className="w-full min-h-[44px] touch-manipulation"
             >
