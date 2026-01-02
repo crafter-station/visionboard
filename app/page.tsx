@@ -26,6 +26,11 @@ function CheckoutVerificationHandler({
   const router = useRouter();
   const [verificationStatus, setVerificationStatus] = useState<"idle" | "verifying" | "success" | "error">("idle");
 
+  const handleContinue = () => {
+    setVerificationStatus("idle");
+    router.replace("/");
+  };
+
   useEffect(() => {
     const checkoutId = searchParams.get("checkout_id");
     if (!checkoutId || verificationStatus !== "idle") return;
@@ -41,20 +46,13 @@ function CheckoutVerificationHandler({
         if (data.verified) {
           setVerificationStatus("success");
           onVerified();
-          setTimeout(() => {
-            router.replace("/");
-          }, 1500);
         } else {
           setVerificationStatus("error");
-          setTimeout(() => {
-            router.replace("/");
-          }, 2000);
+          onVerified();
         }
       } catch {
         setVerificationStatus("error");
-        setTimeout(() => {
-          router.replace("/");
-        }, 2000);
+        onVerified();
       } finally {
         setIsVerifying(false);
       }
@@ -84,17 +82,23 @@ function CheckoutVerificationHandler({
               <h3 className="font-semibold text-lg">Payment Successful</h3>
               <p className="text-sm text-muted-foreground">Your credits have been added!</p>
             </div>
+            <Button onClick={handleContinue} className="w-full">
+              Continue
+            </Button>
           </>
         )}
         {verificationStatus === "error" && (
           <>
-            <div className="size-12 mx-auto rounded-full bg-yellow-100 flex items-center justify-center">
-              <span className="text-2xl">!</span>
+            <div className="size-12 mx-auto rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
+              <span className="text-2xl text-yellow-600 dark:text-yellow-500">!</span>
             </div>
             <div>
-              <h3 className="font-semibold text-lg">Verification Pending</h3>
+              <h3 className="font-semibold text-lg">Processing Payment</h3>
               <p className="text-sm text-muted-foreground">Your payment is being processed. Credits will appear shortly.</p>
             </div>
+            <Button onClick={handleContinue} className="w-full">
+              Continue
+            </Button>
           </>
         )}
       </div>
