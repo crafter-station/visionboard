@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 import { PhotoUpload } from "@/components/photo-upload";
@@ -25,16 +25,17 @@ function CheckoutVerificationHandler({
   const searchParams = useSearchParams();
   const router = useRouter();
   const [verificationStatus, setVerificationStatus] = useState<"idle" | "verifying" | "success" | "error">("idle");
+  const verificationAttemptedRef = useRef(false);
 
   const handleContinue = () => {
-    setVerificationStatus("idle");
     router.replace("/");
   };
 
   useEffect(() => {
     const checkoutId = searchParams.get("checkout_id");
-    if (!checkoutId || verificationStatus !== "idle") return;
+    if (!checkoutId || verificationAttemptedRef.current) return;
 
+    verificationAttemptedRef.current = true;
     setVerificationStatus("verifying");
     setIsVerifying(true);
 
@@ -59,7 +60,7 @@ function CheckoutVerificationHandler({
     };
 
     verifyCheckout();
-  }, [searchParams, router, onVerified, verificationStatus, setIsVerifying]);
+  }, [searchParams, onVerified, setIsVerifying]);
 
   if (verificationStatus === "idle") return null;
 
