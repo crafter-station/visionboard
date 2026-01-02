@@ -14,6 +14,7 @@ export const userProfiles = pgTable("user_profiles", {
   userId: text("user_id"),
   avatarOriginalUrl: text("avatar_original_url"),
   avatarNoBgUrl: text("avatar_no_bg_url"),
+  freeImagesUsed: integer("free_images_used").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

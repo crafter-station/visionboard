@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "..";
 import { userProfiles, type UserProfile } from "../schema";
 import { nanoid } from "nanoid";
@@ -74,4 +74,24 @@ export async function getProfileWithBoards(identifier: UserIdentifier) {
     boards,
     credits,
   };
+}
+
+export async function incrementFreeImagesUsed(profileId: string): Promise<number> {
+  const [result] = await db
+    .update(userProfiles)
+    .set({
+      freeImagesUsed: sql`${userProfiles.freeImagesUsed} + 1`,
+      updatedAt: new Date(),
+    })
+    .where(eq(userProfiles.id, profileId))
+    .returning({ freeImagesUsed: userProfiles.freeImagesUsed });
+  return result.freeImagesUsed;
+}
+
+export async function getFreeImagesUsed(profileId: string): Promise<number> {
+  const profile = await db.query.userProfiles.findFirst({
+    where: eq(userProfiles.id, profileId),
+    columns: { freeImagesUsed: true },
+  });
+  return profile?.freeImagesUsed ?? 0;
 }

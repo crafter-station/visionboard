@@ -57,8 +57,8 @@ export function BoardView({ board }: BoardViewProps) {
   const [isAddingGoal, setIsAddingGoal] = useState(false);
   const [isPaid, setIsPaid] = useState(false);
   const [credits, setCredits] = useState(0);
-  const [usage, setUsage] = useState({ photos: 0 });
   const [maxPhotos, setMaxPhotos] = useState(LIMITS.FREE_MAX_PHOTOS);
+  const [freeImagesUsed, setFreeImagesUsed] = useState(0);
 
   const isOwner = isAuthenticated && board.profile.userId === userId;
   const userPhotoUrl = board.profile.avatarNoBgUrl ?? undefined;
@@ -87,18 +87,7 @@ export function BoardView({ board }: BoardViewProps) {
           setIsPaid(data.isPaid);
           setCredits(data.credits);
           setMaxPhotos(data.maxPhotos ?? LIMITS.FREE_MAX_PHOTOS);
-        }
-      } catch {
-        // Silently fail
-      }
-    };
-
-    const fetchUsage = async () => {
-      try {
-        const res = await fetch("/api/boards", { headers: defaultHeaders });
-        if (res.ok) {
-          const data = await res.json();
-          setUsage({ photos: data.usage?.photos ?? 0 });
+          setFreeImagesUsed(data.freeImagesUsed ?? 0);
         }
       } catch {
         // Silently fail
@@ -106,7 +95,6 @@ export function BoardView({ board }: BoardViewProps) {
     };
 
     fetchCredits();
-    fetchUsage();
   }, [isOwner]);
 
   const generatingGoalIds = goals
@@ -126,6 +114,8 @@ export function BoardView({ board }: BoardViewProps) {
         if (!res.ok) return;
 
         const updatedGoals = await res.json();
+        let hasNewCompletions = false;
+
         setGoals((prev) =>
           prev.map((g) => {
             const updated = updatedGoals.find(
@@ -138,6 +128,9 @@ export function BoardView({ board }: BoardViewProps) {
             );
             if (!updated) return g;
             if (updated.status === "completed" || updated.status === "failed") {
+              if (g.isGenerating && updated.status === "completed") {
+                hasNewCompletions = true;
+              }
               return {
                 ...g,
                 isGenerating: false,
@@ -149,6 +142,16 @@ export function BoardView({ board }: BoardViewProps) {
             return g;
           }),
         );
+
+        // Re-fetch actual freeImagesUsed from server when completions detected
+        if (hasNewCompletions) {
+          const creditsRes = await fetch("/api/polar/credits");
+          if (creditsRes.ok) {
+            const data = await creditsRes.json();
+            setFreeImagesUsed(data.freeImagesUsed ?? 0);
+            setCredits(data.credits);
+          }
+        }
       } catch {
         // Silently fail
       }
@@ -216,7 +219,13 @@ export function BoardView({ board }: BoardViewProps) {
         if (imageResult.credits !== undefined) {
           setCredits(imageResult.credits);
         }
-        setUsage((prev) => ({ ...prev, photos: prev.photos + 1 }));
+
+        // Re-fetch actual freeImagesUsed from server after successful generation
+        const creditsRes = await fetch("/api/polar/credits");
+        if (creditsRes.ok) {
+          const data = await creditsRes.json();
+          setFreeImagesUsed(data.freeImagesUsed ?? 0);
+        }
       } catch {
         if (goalId) {
           setGoals((prev) =>
@@ -232,65 +241,6 @@ export function BoardView({ board }: BoardViewProps) {
       }
     },
     [board.id, userPhotoUrl],
-  );
-
-  const regenerateGoalImage = useCallback(
-    async (goalId: string) => {
-      if (!userPhotoUrl) return;
-
-      const goal = goals.find((g) => g.id === goalId);
-      if (!goal) return;
-
-      setGoals((prev) =>
-        prev.map((g) =>
-          g.id === goalId
-            ? { ...g, isGenerating: true, status: "generating" as const }
-            : g,
-        ),
-      );
-
-      try {
-        const [imageResult, phraseResult] = await Promise.all([
-          fetch("/api/generate-image", {
-            method: "POST",
-            headers: defaultHeaders,
-            body: JSON.stringify({
-              userImageUrl: userPhotoUrl,
-              goalId,
-              goalPrompt: goal.title,
-            }),
-          }).then((r) => r.json()),
-          fetch("/api/generate-phrase", {
-            method: "POST",
-            headers: defaultHeaders,
-            body: JSON.stringify({ goalId, goalTitle: goal.title }),
-          }).then((r) => r.json()),
-        ]);
-
-        setGoals((prev) =>
-          prev.map((g) =>
-            g.id === goalId
-              ? {
-                  ...g,
-                  isGenerating: false,
-                  generatedImageUrl: imageResult.imageUrl,
-                  phrase: phraseResult.phrase,
-                  status: "completed" as const,
-                }
-              : g,
-          ),
-        );
-      } catch {
-        setGoals((prev) =>
-          prev.map((g) =>
-            g.id === goalId
-              ? { ...g, isGenerating: false, status: "failed" as const }
-              : g,
-          ),
-        );
-      }
-    },
-    [goals, userPhotoUrl],
   );
 
   const deleteGoal = useCallback(async (goalId: string) => {
@@ -310,7 +260,7 @@ export function BoardView({ board }: BoardViewProps) {
     : null;
 
   const pendingGoals = goals.filter((g) => g.isGenerating).length;
-  const effectivePhotosUsed = usage.photos + pendingGoals;
+  const effectivePhotosUsed = freeImagesUsed + pendingGoals;
   const canAddMoreGoals = isPaid
     ? credits > pendingGoals
     : effectivePhotosUsed < maxPhotos;
@@ -423,7 +373,6 @@ export function BoardView({ board }: BoardViewProps) {
             goals={goals}
             userPhotoUrl={userPhotoUrl}
             onAddGoal={addAndGenerateGoal}
-            onRegenerate={regenerateGoalImage}
             onDeleteGoal={deleteGoal}
             canAddMore={canAddMoreGoals}
             isAtLimit={isAtLimit}
@@ -433,14 +382,14 @@ export function BoardView({ board }: BoardViewProps) {
             isAddingGoal={isAddingGoal}
             credits={credits}
             maxPhotos={maxPhotos}
-            photosUsed={usage.photos}
+            photosUsed={freeImagesUsed}
           />
 
           {isAtLimit && !isPaid && goals.length > 0 && (
             <UpgradeCTA
               isAuthenticated={isAuthenticated}
               checkoutUrl={checkoutUrl}
-              message="You've used all your free images. Upgrade to get more :)"
+              message="You've used all your free images. Upgrade to get more"
             />
           )}
 

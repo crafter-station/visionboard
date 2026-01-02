@@ -27,5 +27,6 @@ export async function GET() {
     isPaid: limits.isPaid,
     maxPhotos: limits.maxPhotos,
     maxBoards: limits.maxBoards,
+    freeImagesUsed: profile.freeImagesUsed,
   });
 }

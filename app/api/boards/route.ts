@@ -45,11 +45,6 @@ export async function GET() {
   const credits = await getCreditsForProfile(profile.id);
   const limits = getUserLimits(credits);
 
-  const totalPhotos = boards.reduce(
-    (acc, board) => acc + board.goals.filter((g) => g.generatedImageUrl).length,
-    0,
-  );
-
   return NextResponse.json({
     boards,
     profile: {
@@ -64,7 +59,7 @@ export async function GET() {
     },
     usage: {
       boards: boards.length,
-      photos: totalPhotos,
+      photos: profile.freeImagesUsed,
     },
     isAuthenticated: true,
     isPaid: limits.isPaid,

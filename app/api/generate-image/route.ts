@@ -10,6 +10,7 @@ import {
   LIMITS,
   getProfileByIdentifier,
   getCreditsForProfile,
+  incrementFreeImagesUsed,
 } from "@/db/queries";
 import { db } from "@/db";
 import { goals } from "@/db/schema";
@@ -106,9 +107,13 @@ export async function POST(request: Request) {
     });
 
     let newCredits = credits;
-    if (limits.isPaid && !isRegeneration) {
-      await deductCredit(profile.id);
-      newCredits = credits - 1;
+    if (!isRegeneration) {
+      if (limits.isPaid) {
+        await deductCredit(profile.id);
+        newCredits = credits - 1;
+      } else {
+        await incrementFreeImagesUsed(profile.id);
+      }
     }
 
     return NextResponse.json({

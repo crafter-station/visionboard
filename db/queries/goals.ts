@@ -1,6 +1,6 @@
-import { eq, sql, and, isNotNull } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "..";
-import { goals, visionBoards, type NewGoal, type Goal } from "../schema";
+import { goals, userProfiles, type NewGoal, type Goal } from "../schema";
 import { generateGoalId } from "@/lib/id";
 import type { UserIdentifier } from "./types";
 import { getProfileByIdentifier } from "./profiles";
@@ -60,17 +60,11 @@ export async function updateGoalPositions(
 export async function countGeneratedPhotosForProfile(
   profileId: string,
 ): Promise<number> {
-  const result = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(goals)
-    .innerJoin(visionBoards, eq(goals.boardId, visionBoards.id))
-    .where(
-      and(
-        eq(visionBoards.profileId, profileId),
-        isNotNull(goals.generatedImageUrl),
-      ),
-    );
-  return Number(result[0]?.count ?? 0);
+  const profile = await db.query.userProfiles.findFirst({
+    where: eq(userProfiles.id, profileId),
+    columns: { freeImagesUsed: true },
+  });
+  return profile?.freeImagesUsed ?? 0;
 }
 
 export async function countGeneratedPhotosByIdentifier(

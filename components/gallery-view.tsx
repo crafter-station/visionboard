@@ -1,11 +1,28 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Check, Link, Loader2, Plus, RefreshCw, Trash2, X } from "lucide-react";
+import {
+  Check,
+  Download,
+  Link,
+  Loader2,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
+import { downloadImageWithFrame } from "@/lib/download-image";
 import { SignUpButton } from "@clerk/nextjs";
 import { ImageCard } from "@/components/image-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { Goal } from "@/components/goal-input";
 
 interface GalleryViewProps {
@@ -13,7 +30,6 @@ interface GalleryViewProps {
   goals: Goal[];
   userPhotoUrl?: string;
   onAddGoal: (title: string) => void;
-  onRegenerate?: (goalId: string) => void;
   onDeleteGoal?: (goalId: string) => void;
   canAddMore: boolean;
   isAtLimit: boolean;
@@ -30,7 +46,6 @@ export function GalleryView({
   boardId,
   goals,
   onAddGoal,
-  onRegenerate,
   onDeleteGoal,
   canAddMore,
   isAtLimit,
@@ -45,6 +60,8 @@ export function GalleryView({
   const [copied, setCopied] = useState(false);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [newGoalTitle, setNewGoalTitle] = useState("");
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [deleteGoalId, setDeleteGoalId] = useState<string | null>(null);
 
   const reversedGoals = useMemo(() => [...goals].reverse(), [goals]);
 
@@ -66,6 +83,31 @@ export function GalleryView({
   const handleAddCardClick = () => {
     if (canAddMore) {
       setIsAddingNew(true);
+    }
+  };
+
+  const handleDownload = async (
+    goalId: string,
+    imageUrl: string,
+    phrase: string | undefined,
+    title: string,
+  ) => {
+    setDownloadingId(goalId);
+    try {
+      const sanitizedTitle = title
+        .replace(/[^a-zA-Z0-9\s]/g, "")
+        .replace(/\s+/g, "-")
+        .toLowerCase()
+        .slice(0, 30);
+      await downloadImageWithFrame(
+        imageUrl,
+        phrase || "",
+        `vision-board-${sanitizedTitle}`,
+      );
+    } catch (error) {
+      console.error("Failed to download image:", error);
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -229,38 +271,42 @@ export function GalleryView({
               isLoading={goal.isGenerating}
               title={goal.title}
             />
-            {goal.generatedImageUrl &&
-              !goal.isGenerating &&
-              (onRegenerate || onDeleteGoal) && (
-                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                  {onRegenerate && (
-                    <Button
-                      variant="secondary"
-                      size="icon"
-                      className="size-8"
-                      onClick={() => onRegenerate(goal.id)}
-                      title="Regenerate"
-                    >
-                      <RefreshCw className="size-4" />
-                    </Button>
+            {goal.generatedImageUrl && !goal.isGenerating && (
+              <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  className="size-8"
+                  onClick={() =>
+                    handleDownload(
+                      goal.id,
+                      goal.generatedImageUrl!,
+                      goal.phrase,
+                      goal.title,
+                    )
+                  }
+                  disabled={downloadingId === goal.id}
+                  title="Download"
+                >
+                  {downloadingId === goal.id ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Download className="size-4" />
                   )}
-                  {onDeleteGoal && (
-                    <Button
-                      variant="secondary"
-                      size="icon"
-                      className="size-8"
-                      onClick={() => {
-                        if (confirm("Delete this goal?")) {
-                          onDeleteGoal(goal.id);
-                        }
-                      }}
-                      title="Delete"
-                    >
-                      <Trash2 className="size-4 text-destructive" />
-                    </Button>
-                  )}
-                </div>
-              )}
+                </Button>
+                {onDeleteGoal && (
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    className="size-8"
+                    onClick={() => setDeleteGoalId(goal.id)}
+                    title="Delete"
+                  >
+                    <Trash2 className="size-4 text-destructive" />
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -272,6 +318,37 @@ export function GalleryView({
           </p>
         </div>
       )}
+
+      <Dialog
+        open={deleteGoalId !== null}
+        onOpenChange={(open) => !open && setDeleteGoalId(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Goal</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this goal? This action cannot be
+              undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setDeleteGoalId(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (deleteGoalId && onDeleteGoal) {
+                  onDeleteGoal(deleteGoalId);
+                  setDeleteGoalId(null);
+                }
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
