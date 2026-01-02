@@ -7,6 +7,7 @@ import {
   countGeneratedPhotosForProfile,
   getUserLimits,
   deductCredit,
+  addCredit,
   LIMITS,
   getProfileByIdentifier,
   getCreditsForProfile,
@@ -56,6 +57,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
+  // Prevent duplicate FAL requests if goal is already generating
+  if (existingGoal.status === "generating") {
+    return NextResponse.json(
+      { error: "Image generation already in progress" },
+      { status: 409 },
+    );
+  }
+
   const isRegeneration = !!existingGoal.generatedImageUrl;
   const credits = await getCreditsForProfile(profile.id);
   const limits = getUserLimits(credits);
@@ -87,6 +96,26 @@ export async function POST(request: Request) {
     }
   }
 
+  // Deduct credit BEFORE calling FAL to prevent abuse
+  let creditDeducted = false;
+  let newCredits = credits;
+
+  if (!isRegeneration) {
+    if (limits.isPaid) {
+      const success = await deductCredit(profile.id);
+      if (!success) {
+        return NextResponse.json(
+          { error: "Failed to deduct credit", requiresUpgrade: true },
+          { status: 400 },
+        );
+      }
+      creditDeducted = true;
+      newCredits = credits - 1;
+    } else {
+      await incrementFreeImagesUsed(profile.id);
+    }
+  }
+
   await updateGoal(goalId, { status: "generating" });
 
   try {
@@ -106,16 +135,6 @@ export async function POST(request: Request) {
       status: "completed",
     });
 
-    let newCredits = credits;
-    if (!isRegeneration) {
-      if (limits.isPaid) {
-        await deductCredit(profile.id);
-        newCredits = credits - 1;
-      } else {
-        await incrementFreeImagesUsed(profile.id);
-      }
-    }
-
     return NextResponse.json({
       goalId,
       imageUrl: blob.url,
@@ -124,6 +143,12 @@ export async function POST(request: Request) {
     });
   } catch (err) {
     await updateGoal(goalId, { status: "failed" });
+
+    // Refund credit if FAL generation failed
+    if (creditDeducted) {
+      await addCredit(profile.id);
+    }
+
     throw err;
   }
 }

@@ -85,6 +85,29 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Missing goal ID" }, { status: 400 });
   }
 
+  const profile = await getProfileByIdentifier(identifier);
+  if (!profile) {
+    return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+  }
+
+  // Verify ownership before deleting
+  const { goals: goalsTable } = await import("@/db/schema");
+  const { db } = await import("@/db");
+  const { eq } = await import("drizzle-orm");
+
+  const goal = await db.query.goals.findFirst({
+    where: eq(goalsTable.id, goalId),
+    with: { board: true },
+  });
+
+  if (!goal) {
+    return NextResponse.json({ error: "Goal not found" }, { status: 404 });
+  }
+
+  if (goal.board.profileId !== profile.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  }
+
   await deleteGoal(goalId);
 
   return NextResponse.json({ success: true });

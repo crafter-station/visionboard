@@ -91,3 +91,16 @@ export async function deductCredit(profileId: string): Promise<boolean> {
   return true;
 }
 
+export async function addCredit(profileId: string): Promise<void> {
+  const existing = await getCreditsRecordForProfile(profileId);
+  if (!existing) return;
+
+  await db
+    .update(userCredits)
+    .set({
+      imageCredits: sql`${userCredits.imageCredits} + 1`,
+      updatedAt: new Date(),
+    })
+    .where(eq(userCredits.profileId, profileId));
+}
+
