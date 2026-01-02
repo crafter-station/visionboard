@@ -71,7 +71,7 @@ export function ExistingBoards({
           <h3 className="text-base sm:text-lg font-semibold">Your Vision Boards</h3>
           {limits && usage && (
             <div className="text-xs sm:text-sm text-muted-foreground">
-              {usage.boards}/{limits.MAX_BOARDS_PER_USER >= 999999 ? "unlimited" : limits.MAX_BOARDS_PER_USER} boards | {usage.photos}/{limits.MAX_PHOTOS_PER_USER} images
+              {usage.boards}/{limits.MAX_BOARDS_PER_USER >= 99 ? "unlimited" : limits.MAX_BOARDS_PER_USER} boards | {usage.photos}/{limits.MAX_PHOTOS_PER_USER} images
             </div>
           )}
         </div>
