@@ -70,13 +70,13 @@ export async function validateRequest(rateLimitType: RateLimitType = "general"):
   if (!success) {
     return {
       success: false,
-      visitorId,
-      userId,
+      visitorId: visitorId ?? null,
+      userId: userId ?? null,
       identifier,
       error: "Rate limit exceeded. Please try again later.",
       remaining,
     };
   }
 
-  return { success: true, visitorId, userId, identifier, remaining };
+  return { success: true, visitorId: visitorId ?? null, userId: userId ?? null, identifier, remaining };
 }

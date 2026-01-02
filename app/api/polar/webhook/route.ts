@@ -4,8 +4,8 @@ import { addCredits, LIMITS } from "@/db/queries";
 export const POST = Webhooks({
   webhookSecret: process.env.POLAR_WEBHOOK_SECRET!,
   onOrderPaid: async (payload) => {
-    const { order } = payload.data;
-    const userId = order.customer.externalId;
+    const order = payload.data as any;
+    const userId = order.customer?.externalId;
 
     if (!userId) {
       console.error("No external user ID in order:", order.id);
@@ -16,7 +16,7 @@ export const POST = Webhooks({
       userId,
       LIMITS.PAID_CREDITS_PER_PURCHASE,
       order.id,
-      order.customer.id
+      order.customer?.id
     );
 
     if (alreadyProcessed) {

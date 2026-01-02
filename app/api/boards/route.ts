@@ -6,7 +6,7 @@ import {
   getUserLimits,
   type UserIdentifier,
 } from "@/db/queries";
-import { getAuthIdentifier, isPaidUser } from "@/lib/auth";
+import { getAuthIdentifier, getUserCreditsCount } from "@/lib/auth";
 
 export async function GET() {
   const identifier = await getAuthIdentifier();
@@ -17,8 +17,9 @@ export async function GET() {
   }
 
   const boards = await getVisionBoardsByIdentifier(identifier);
-  const isPaid = await isPaidUser();
-  const limits = getUserLimits(isPaid);
+  const credits = userId ? await getUserCreditsCount() : 0;
+  const limits = getUserLimits(credits);
+  const isPaid = limits.isPaid;
 
   const totalPhotos = boards.reduce(
     (acc, board) => acc + board.goals.filter((g) => g.generatedImageUrl).length,
@@ -57,8 +58,9 @@ export async function POST(request: Request) {
   }
 
   const boards = await getVisionBoardsByIdentifier(identifier);
-  const isPaid = await isPaidUser();
-  const limits = getUserLimits(isPaid);
+  const credits = userId ? await getUserCreditsCount() : 0;
+  const limits = getUserLimits(credits);
+  const isPaid = limits.isPaid;
 
   if (boards.length >= limits.maxBoards) {
     // TODO: Polar - redirect to payment if not paid

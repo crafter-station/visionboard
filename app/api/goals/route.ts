@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { createGoal, deleteGoal, getVisionBoard, countGoalsByBoard, getUserLimits } from "@/db/queries";
-import { validateRequest, isPaidUser } from "@/lib/auth";
+import { validateRequest, getUserCreditsCount } from "@/lib/auth";
 
 export async function POST(request: Request) {
-  const { success, error, remaining } = await validateRequest("goals");
+  const { success, userId, error, remaining } = await validateRequest("goals");
 
   if (!success) {
     return NextResponse.json(
@@ -28,8 +28,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const isPaid = await isPaidUser();
-  const limits = getUserLimits(isPaid);
+  const credits = userId ? await getUserCreditsCount() : 0;
+  const limits = getUserLimits(credits);
 
   const goalCount = await countGoalsByBoard(boardId);
   if (goalCount >= limits.maxGoalsPerBoard) {

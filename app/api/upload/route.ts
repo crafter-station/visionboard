@@ -1,9 +1,8 @@
 import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
-import { validateRequest } from "@/lib/auth";
+import { validateRequest, getUserCreditsCount } from "@/lib/auth";
 import { countBoardsByIdentifier, getUserLimits } from "@/db/queries";
-import { isPaidUser } from "@/lib/auth";
 
 export async function POST(request: Request) {
   const { success, userId, visitorId, identifier, error, remaining } = await validateRequest("upload");
@@ -15,8 +14,9 @@ export async function POST(request: Request) {
     );
   }
 
-  const isPaid = await isPaidUser();
-  const limits = getUserLimits(isPaid);
+  const credits = userId ? await getUserCreditsCount() : 0;
+  const limits = getUserLimits(credits);
+  const isPaid = limits.isPaid;
   const boardCount = await countBoardsByIdentifier(identifier);
 
   if (boardCount >= limits.maxBoards) {
