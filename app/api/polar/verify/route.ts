@@ -7,6 +7,7 @@ import {
   getOrCreateProfile,
   getCreditsForProfile,
   getUserLimits,
+  getPurchaseByOrderId,
 } from "@/db/queries";
 
 const polar = new Polar({
@@ -28,6 +29,21 @@ export async function GET(request: Request) {
   }
 
   try {
+    // Fast path: check if webhook already processed this payment
+    const existingPurchase = await getPurchaseByOrderId(checkoutId);
+    if (existingPurchase) {
+      const credits = await getCreditsForProfile(existingPurchase.profileId);
+      const limits = getUserLimits(credits);
+      return NextResponse.json({
+        verified: true,
+        credits,
+        isPaid: limits.isPaid,
+        maxPhotos: limits.maxPhotos,
+        maxBoards: limits.maxBoards,
+      });
+    }
+
+    // Slow path: webhook hasn't processed yet, verify with Polar API
     const checkout = await polar.checkouts.get({ id: checkoutId });
 
     if (checkout.status !== "succeeded") {

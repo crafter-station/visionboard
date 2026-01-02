@@ -28,6 +28,12 @@ export async function getCreditsRecordForProfile(profileId: string) {
   });
 }
 
+export async function getPurchaseByOrderId(polarOrderId: string) {
+  return db.query.purchases.findFirst({
+    where: eq(purchases.polarOrderId, polarOrderId),
+  });
+}
+
 export async function addCredits(
   profileId: string,
   amount: number,
