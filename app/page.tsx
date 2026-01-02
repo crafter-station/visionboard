@@ -6,6 +6,7 @@ import { VisionCanvas } from "@/components/vision-canvas";
 import { SponsorFooter } from "@/components/sponsor-footer";
 import { GithubBadge } from "@/components/github-badge";
 import { ExistingBoards } from "@/components/existing-boards";
+import { ThemeSwitcherButton } from "@/components/elements/theme-switcher-button";
 import { useVisionBoard } from "@/hooks/use-vision-board";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
@@ -31,6 +32,7 @@ export default function Home() {
     loadExistingBoard,
     resetToUpload,
     savePositions,
+    createBoardWithExistingPhoto,
   } = useVisionBoard();
 
   if (isLoadingFingerprint || isLoadingBoards) {
@@ -45,6 +47,7 @@ export default function Home() {
   }
 
   const canCreateNewBoard = !limits || !usage || usage.boards < limits.MAX_BOARDS_PER_USER;
+  const hasExistingBoards = existingBoards.length > 0;
 
   return (
     <main className="min-h-screen bg-background flex flex-col">
@@ -69,6 +72,7 @@ export default function Home() {
               </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+              <ThemeSwitcherButton />
               <GithubBadge />
               <div className="flex items-center gap-1 sm:gap-2">
                 {["upload", "goals", "board"].map((s, i) => (
@@ -103,17 +107,18 @@ export default function Home() {
       <div className="container mx-auto px-3 py-6 sm:px-4 sm:py-12 flex-1">
         {step === "upload" && (
           <div className="max-w-4xl mx-auto space-y-8 sm:space-y-12">
-            {existingBoards.length > 0 && (
+            {hasExistingBoards && (
               <ExistingBoards
                 boards={existingBoards}
                 onSelectBoard={loadExistingBoard}
                 onDeleteBoard={deleteBoard}
+                onCreateNewBoard={canCreateNewBoard ? createBoardWithExistingPhoto : undefined}
                 limits={limits}
                 usage={usage}
               />
             )}
 
-            {canCreateNewBoard ? (
+            {!hasExistingBoards && (
               <>
                 <div className="flex justify-center">
                   <img
@@ -125,7 +130,7 @@ export default function Home() {
                 <div className="max-w-2xl mx-auto space-y-6 sm:space-y-8">
                   <div className="text-center space-y-2">
                     <h2 className="text-xl sm:text-3xl font-bold tracking-tight">
-                      {existingBoards.length > 0 ? "Create Another Board" : "Start with Your Photo"}
+                      Start with Your Photo
                     </h2>
                     <p className="text-sm sm:text-base text-muted-foreground">
                       Upload a photo of yourself. We will remove the background and use
@@ -135,7 +140,9 @@ export default function Home() {
                   <PhotoUpload visitorId={visitorId} onUploadComplete={onUploadComplete} />
                 </div>
               </>
-            ) : (
+            )}
+
+            {hasExistingBoards && !canCreateNewBoard && (
               <div className="text-center py-8">
                 <p className="text-muted-foreground">
                   You have reached the maximum of {limits?.MAX_BOARDS_PER_USER} boards.

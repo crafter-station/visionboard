@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { ThemeProvider } from "next-themes";
 import { Providers } from "@/components/providers";
 import "./globals.css";
 
@@ -28,7 +29,7 @@ export const metadata: Metadata = {
     siteName: "Agentic Vision Board",
     images: [
       {
-        url: "/brand/og_vb.png",
+        url: "/brand/og_vb_black.png",
         width: 1200,
         height: 630,
         alt: "Agentic Vision Board - Create your 2026 vision board with AI",
@@ -41,7 +42,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Agentic Vision Board",
     description: "Create your 2026 vision board with AI-generated images",
-    images: ["/brand/og_vb.png"],
+    images: ["/brand/og_vb_black.png"],
   },
 };
 
@@ -51,9 +52,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${dmMono.variable} font-sans antialiased`}>
-        <Providers>{children}</Providers>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          disableTransitionOnChange={false}
+        >
+          <Providers>{children}</Providers>
+        </ThemeProvider>
         <Analytics />
       </body>
     </html>
