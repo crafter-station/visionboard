@@ -13,7 +13,7 @@ import { ProBadge } from "@/components/ui/pro-badge";
 import { Button } from "@/components/ui/button";
 import { useVisionBoard } from "@/hooks/use-vision-board";
 import { LIMITS } from "@/lib/constants";
-import { Loader2, CheckCircle } from "lucide-react";
+import { Loader2, CheckCircle, X } from "lucide-react";
 
 function CheckoutVerificationHandler({
   onVerified,
@@ -66,9 +66,17 @@ function CheckoutVerificationHandler({
 
   if (verificationStatus === "idle") return null;
 
+  const canClose = verificationStatus !== "verifying";
+
   return (
-    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 safe-area-inset">
-      <div className="bg-card border rounded-lg p-6 sm:p-8 max-w-sm w-full text-center space-y-4 shadow-lg relative z-10">
+    <div
+      className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 safe-area-inset"
+      onClick={canClose ? handleContinue : undefined}
+    >
+      <div
+        className="bg-card border rounded-lg p-6 sm:p-8 max-w-sm w-full text-center space-y-4 shadow-lg relative z-10"
+        onClick={(e) => e.stopPropagation()}
+      >
         {verificationStatus === "verifying" && (
           <>
             <Loader2 className="size-12 animate-spin mx-auto text-primary" />
@@ -80,6 +88,14 @@ function CheckoutVerificationHandler({
         )}
         {verificationStatus === "success" && (
           <>
+            <button
+              type="button"
+              onClick={handleContinue}
+              className="absolute top-3 right-3 p-2 rounded-full hover:bg-muted transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation"
+              aria-label="Close"
+            >
+              <X className="size-5" />
+            </button>
             <CheckCircle className="size-12 mx-auto text-green-500" />
             <div>
               <h3 className="font-semibold text-lg">Payment Successful</h3>
@@ -98,6 +114,14 @@ function CheckoutVerificationHandler({
         )}
         {verificationStatus === "error" && (
           <>
+            <button
+              type="button"
+              onClick={handleContinue}
+              className="absolute top-3 right-3 p-2 rounded-full hover:bg-muted transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation"
+              aria-label="Close"
+            >
+              <X className="size-5" />
+            </button>
             <div className="size-12 mx-auto rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
               <span className="text-2xl text-yellow-600 dark:text-yellow-500">
                 !
