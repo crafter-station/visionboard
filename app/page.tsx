@@ -1,320 +1,107 @@
 "use client";
 
-import { useEffect, useState, useRef, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
-import { PhotoUpload } from "@/components/photo-upload";
-import { GalleryView } from "@/components/gallery-view";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { SignInButton, SignUpButton } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
+import { Button } from "@/components/ui/button";
 import { SponsorFooter } from "@/components/sponsor-footer";
 import { GithubBadge } from "@/components/github-badge";
-import { ExistingBoards } from "@/components/existing-boards";
 import { ThemeSwitcherButton } from "@/components/elements/theme-switcher-button";
-import { UpgradeCTA } from "@/components/upgrade-cta";
-import { ProBadge } from "@/components/ui/pro-badge";
-import { Button } from "@/components/ui/button";
-import { useVisionBoard } from "@/hooks/use-vision-board";
-import { ArrowLeft, Loader2, CheckCircle } from "lucide-react";
+import { Loader2, ArrowRight } from "lucide-react";
 
-function CheckoutVerificationHandler({
-  onVerified,
-  setIsVerifying,
-}: {
-  onVerified: () => void;
-  setIsVerifying: (v: boolean) => void;
-}) {
-  const searchParams = useSearchParams();
+export default function LandingPage() {
+  const { isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
-  const [verificationStatus, setVerificationStatus] = useState<"idle" | "verifying" | "success" | "error">("idle");
-  const verificationAttemptedRef = useRef(false);
-
-  const handleContinue = () => {
-    router.replace("/");
-  };
 
   useEffect(() => {
-    const checkoutId = searchParams.get("checkout_id");
-    if (!checkoutId || verificationAttemptedRef.current) return;
+    if (isLoaded && isSignedIn) {
+      router.replace("/b");
+    }
+  }, [isLoaded, isSignedIn, router]);
 
-    verificationAttemptedRef.current = true;
-    setVerificationStatus("verifying");
-    setIsVerifying(true);
-
-    const verifyCheckout = async () => {
-      try {
-        const res = await fetch(`/api/polar/verify?checkout_id=${checkoutId}`);
-        const data = await res.json();
-
-        if (data.verified) {
-          setVerificationStatus("success");
-          onVerified();
-        } else {
-          setVerificationStatus("error");
-          onVerified();
-        }
-      } catch {
-        setVerificationStatus("error");
-        onVerified();
-      } finally {
-        setIsVerifying(false);
-      }
-    };
-
-    verifyCheckout();
-  }, [searchParams, onVerified, setIsVerifying]);
-
-  if (verificationStatus === "idle") return null;
-
-  return (
-    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] flex items-center justify-center">
-      <div className="bg-card border rounded-lg p-8 max-w-sm mx-4 text-center space-y-4">
-        {verificationStatus === "verifying" && (
-          <>
-            <Loader2 className="size-12 animate-spin mx-auto text-primary" />
-            <div>
-              <h3 className="font-semibold text-lg">Verifying Payment</h3>
-              <p className="text-sm text-muted-foreground">Please wait...</p>
-            </div>
-          </>
-        )}
-        {verificationStatus === "success" && (
-          <>
-            <CheckCircle className="size-12 mx-auto text-green-500" />
-            <div>
-              <h3 className="font-semibold text-lg">Payment Successful</h3>
-              <p className="text-sm text-muted-foreground">Your credits have been added!</p>
-            </div>
-            <Button onClick={handleContinue} className="w-full">
-              Continue
-            </Button>
-          </>
-        )}
-        {verificationStatus === "error" && (
-          <>
-            <div className="size-12 mx-auto rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
-              <span className="text-2xl text-yellow-600 dark:text-yellow-500">!</span>
-            </div>
-            <div>
-              <h3 className="font-semibold text-lg">Processing Payment</h3>
-              <p className="text-sm text-muted-foreground">Your payment is being processed. Credits will appear shortly.</p>
-            </div>
-            <Button onClick={handleContinue} className="w-full">
-              Continue
-            </Button>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-export default function Home() {
-  const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
-  const {
-    visitorId,
-    isAuthenticated,
-    isLoadingAuth,
-    isLoadingBoards,
-    boardData,
-    profile,
-    goals,
-    step,
-    isGenerating,
-    isAddingGoal,
-    existingBoards,
-    limits,
-    usage,
-    userId,
-    isPaid,
-    credits,
-    hasExistingPhoto,
-    canAddMoreGoals,
-    isAtLimit,
-    onUploadComplete,
-    addAndGenerateGoal,
-    regenerateGoalImage,
-    deleteGoal,
-    deleteBoard,
-    loadExistingBoard,
-    resetToBoards,
-    createBoardWithExistingPhoto,
-    refetchBoards,
-  } = useVisionBoard();
-
-  const checkoutUrl = userId
-    ? `/api/polar/checkout?products=${process.env.NEXT_PUBLIC_POLAR_PRODUCT_ID}&customerExternalId=${userId}`
-    : null;
-
-  if (isLoadingAuth || isLoadingBoards) {
+  if (!isLoaded) {
     return (
       <main className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="size-8 animate-spin" />
-          <p className="text-sm text-muted-foreground">Loading...</p>
-        </div>
+        <Loader2 className="size-8 animate-spin" />
       </main>
     );
   }
 
-  const canCreateNewBoard = !limits || !usage || usage.boards < limits.MAX_BOARDS_PER_USER;
-  const hasExistingBoards = existingBoards.length > 0;
-  const showUpload = !hasExistingPhoto && step === "upload";
-  const showBoardsList = hasExistingBoards && step === "upload" && !boardData;
-  const showGallery = step === "gallery" && boardData;
+  if (isSignedIn) {
+    return (
+      <main className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="size-8 animate-spin" />
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-background flex flex-col">
-      <Suspense fallback={null}>
-        <CheckoutVerificationHandler onVerified={refetchBoards} setIsVerifying={setIsVerifyingPayment} />
-      </Suspense>
       <header className="border-b sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50">
         <div className="container mx-auto px-3 py-3 sm:px-4 sm:py-4">
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-              {showGallery && boardData?.avatarNoBgUrl && (
-                <div className="size-8 sm:size-12 rounded-full overflow-hidden border-2 border-foreground bg-muted flex-shrink-0">
-                  <img
-                    src={boardData.avatarNoBgUrl}
-                    alt="Your photo"
-                    className="w-full h-full object-cover object-top"
-                  />
-                </div>
-              )}
-              <div className="min-w-0">
-                <h1 className="text-base sm:text-xl font-bold tracking-tight truncate">
-                  Vision Board
-                </h1>
-                <p className="text-xs text-muted-foreground hidden sm:block">2026 Edition</p>
-              </div>
+            <div className="min-w-0">
+              <h1 className="text-base sm:text-xl font-bold tracking-tight truncate">
+                Vision Board
+              </h1>
+              <p className="text-xs text-muted-foreground hidden sm:block">2026 Edition</p>
             </div>
             <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-              {isPaid && <ProBadge credits={credits} />}
               <ThemeSwitcherButton />
               <GithubBadge />
-              
-              {isAuthenticated ? (
-                <UserButton 
-                  afterSignOutUrl="/"
-                  appearance={{
-                    elements: {
-                      avatarBox: "size-8 sm:size-9"
-                    }
-                  }}
-                />
-              ) : (
-                <div className="flex items-center gap-2">
-                  <SignInButton mode="modal">
-                    <Button variant="ghost" size="sm" className="hidden sm:inline-flex">
-                      Sign In
-                    </Button>
-                  </SignInButton>
-                  <SignUpButton mode="modal">
-                    <Button size="sm">
-                      Sign Up
-                    </Button>
-                  </SignUpButton>
-                </div>
-              )}
+              <SignInButton mode="modal">
+                <Button variant="ghost" size="sm" className="hidden sm:inline-flex">
+                  Sign In
+                </Button>
+              </SignInButton>
+              <SignUpButton mode="modal">
+                <Button size="sm">
+                  Sign Up
+                </Button>
+              </SignUpButton>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-3 py-6 sm:px-4 sm:py-12 flex-1">
-        {showUpload && (
-          <div className="max-w-4xl mx-auto space-y-8 sm:space-y-12">
-                <div className="flex justify-center">
-                  <img
-                    src="/brand/hero-Image.png"
-                    alt="Vision Board AI"
-                    className="w-full max-w-md sm:max-w-2xl h-auto object-contain"
-                  />
-                </div>
-                <div className="max-w-2xl mx-auto space-y-6 sm:space-y-8">
-                  <div className="text-center space-y-2">
-                    <h2 className="text-xl sm:text-3xl font-bold tracking-tight">
-                      Start with Your Photo
-                    </h2>
-                    <p className="text-sm sm:text-base text-muted-foreground">
-                      Upload a photo of yourself. We will remove the background and use
-                      it to place you in your dream scenarios.
-                    </p>
-                  </div>
-                  <PhotoUpload visitorId={visitorId} onUploadComplete={onUploadComplete} />
-                </div>
-          </div>
-            )}
-
-        {showBoardsList && (
-          <div className="max-w-4xl mx-auto space-y-8 sm:space-y-12">
-            <ExistingBoards
-              boards={existingBoards}
-              profile={profile}
-              onSelectBoard={loadExistingBoard}
-              onDeleteBoard={deleteBoard}
-              onCreateNewBoard={canCreateNewBoard ? createBoardWithExistingPhoto : undefined}
-              limits={limits}
-              usage={usage}
+      <div className="container mx-auto px-3 py-6 sm:px-4 sm:py-12 flex-1 flex flex-col items-center justify-center">
+        <div className="max-w-4xl mx-auto space-y-8 sm:space-y-12 text-center">
+          <div className="flex justify-center">
+            <img
+              src="/brand/hero-Image.png"
+              alt="Vision Board AI"
+              className="w-full max-w-md sm:max-w-2xl h-auto object-contain"
             />
-
-            {!canCreateNewBoard && !isPaid && (
-              <UpgradeCTA
-                isAuthenticated={isAuthenticated}
-                checkoutUrl={checkoutUrl}
-                message={`You've reached the limit of ${limits?.MAX_BOARDS_PER_USER} board${(limits?.MAX_BOARDS_PER_USER ?? 1) === 1 ? '' : 's'}. Upgrade for unlimited boards and 50 more images.`}
-              />
-            )}
           </div>
-        )}
-
-        {showGallery && (
-          <div className="max-w-4xl mx-auto space-y-6">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={resetToBoards}
-                className="gap-2"
+          <div className="max-w-2xl mx-auto space-y-6 sm:space-y-8">
+            <div className="space-y-4">
+              <h2 className="text-2xl sm:text-4xl font-bold tracking-tight">
+                Create Your 2026 Vision Board
+              </h2>
+              <p className="text-base sm:text-lg text-muted-foreground">
+                Upload your photo and let AI place you in your dream scenarios. 
+                Visualize your goals and manifest your future.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <SignUpButton mode="modal">
+                <Button size="lg" className="gap-2 w-full sm:w-auto">
+                  Get Started
+                  <ArrowRight className="size-4" />
+                </Button>
+              </SignUpButton>
+              <Button 
+                variant="outline" 
+                size="lg" 
+                className="w-full sm:w-auto"
+                onClick={() => router.push("/b")}
               >
-                <ArrowLeft className="size-4" />
-                Back
+                Try without account
               </Button>
-                </div>
-
-            <GalleryView
-              boardId={boardData?.boardId}
-              goals={goals}
-              userPhotoUrl={boardData?.avatarNoBgUrl ?? undefined}
-              onAddGoal={addAndGenerateGoal}
-              onRegenerate={regenerateGoalImage}
-              onDeleteGoal={deleteGoal}
-              canAddMore={canAddMoreGoals}
-              isAtLimit={isAtLimit}
-              isAuthenticated={isAuthenticated}
-              isPro={isPaid}
-              isAddingGoal={isAddingGoal}
-            />
-
-            {isAtLimit && !isPaid && goals.length > 0 && (
-              <UpgradeCTA
-                isAuthenticated={isAuthenticated}
-                checkoutUrl={checkoutUrl}
-                message={
-                  isAuthenticated
-                    ? "You've used all your free images. Upgrade to get 50 more generations."
-                    : "You've used all 3 free images. Sign up to get more."
-                }
-              />
-            )}
-
-            {isPaid && credits === 0 && (
-              <UpgradeCTA
-                isAuthenticated={isAuthenticated}
-                checkoutUrl={checkoutUrl}
-                message="You've used all your credits. Purchase more to continue generating images."
-              />
-            )}
+            </div>
           </div>
-        )}
+        </div>
       </div>
 
       <SponsorFooter />

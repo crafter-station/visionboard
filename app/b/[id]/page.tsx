@@ -1,9 +1,6 @@
 import { notFound } from "next/navigation";
 import { getVisionBoard } from "@/db/queries";
-import { ShareCanvas } from "@/components/share-canvas";
-import { SponsorFooter } from "@/components/sponsor-footer";
-import { GithubBadge } from "@/components/github-badge";
-import { ThemeSwitcherButton } from "@/components/elements/theme-switcher-button";
+import { BoardView } from "./board-view";
 import type { Metadata } from "next";
 
 interface Props {
@@ -47,34 +44,5 @@ export default async function BoardPage({ params }: Props) {
     notFound();
   }
 
-  return (
-    <main className="min-h-screen bg-background flex flex-col">
-      <header className="border-b sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">Agentic Vision Board</h1>
-              <p className="text-sm text-muted-foreground">2026 Edition</p>
-            </div>
-            <div className="flex items-center gap-4">
-              <ThemeSwitcherButton />
-              <GithubBadge />
-              <a
-                href="/"
-                className="text-sm font-medium hover:underline underline-offset-4"
-              >
-                Create your own
-              </a>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="container mx-auto px-4 py-8 flex-1">
-        <ShareCanvas board={board} />
-      </div>
-
-      <SponsorFooter />
-    </main>
-  );
+  return <BoardView board={board} />;
 }

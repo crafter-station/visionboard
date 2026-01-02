@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Check, Link, Loader2, Plus, RefreshCw, Trash2, X } from "lucide-react";
+import { SignUpButton } from "@clerk/nextjs";
 import { ImageCard } from "@/components/image-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,8 +19,7 @@ interface GalleryViewProps {
   isAtLimit: boolean;
   isAuthenticated: boolean;
   isPro: boolean;
-  onUpgradeClick?: () => void;
-  onSignUpClick?: () => void;
+  checkoutUrl?: string | null;
   isAddingGoal?: boolean;
 }
 
@@ -33,13 +33,14 @@ export function GalleryView({
   isAtLimit,
   isAuthenticated,
   isPro,
-  onUpgradeClick,
-  onSignUpClick,
+  checkoutUrl,
   isAddingGoal,
 }: GalleryViewProps) {
   const [copied, setCopied] = useState(false);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [newGoalTitle, setNewGoalTitle] = useState("");
+
+  const reversedGoals = useMemo(() => [...goals].reverse(), [goals]);
 
   const handleShare = async () => {
     if (!boardId) return;
@@ -57,15 +58,9 @@ export function GalleryView({
   };
 
   const handleAddCardClick = () => {
-    if (!canAddMore) {
-      if (!isAuthenticated) {
-        onSignUpClick?.();
-      } else if (!isPro) {
-        onUpgradeClick?.();
-      }
-      return;
+    if (canAddMore) {
+      setIsAddingNew(true);
     }
-    setIsAddingNew(true);
   };
 
   const allGenerated = goals.length > 0 && goals.every((g) => g.generatedImageUrl && !g.isGenerating);
@@ -99,7 +94,7 @@ export function GalleryView({
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        {(canAddMore || isAtLimit) && (
+        {canAddMore && (
           <div
             className="relative border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer hover:border-foreground/50 hover:bg-accent/50 transition-colors"
             style={{ aspectRatio: "1618 / 2001" }}
@@ -150,23 +145,44 @@ export function GalleryView({
                 <div className="size-12 rounded-full bg-muted flex items-center justify-center">
                   <Plus className="size-6" />
                 </div>
-                {canAddMore ? (
-                  <p className="text-sm text-muted-foreground">Add a goal</p>
-                ) : isAtLimit && !isAuthenticated ? (
-                  <p className="text-sm text-muted-foreground">
-                    Sign up to add more
-                  </p>
-                ) : isAtLimit && !isPro ? (
-                  <p className="text-sm text-muted-foreground">
-                    Upgrade to add more
-                  </p>
-                ) : null}
+                <p className="text-sm text-muted-foreground">Add a goal</p>
               </div>
             )}
           </div>
         )}
 
-        {goals.map((goal) => (
+        {isAtLimit && !isAuthenticated && (
+          <SignUpButton mode="modal">
+            <div
+              className="relative border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer hover:border-foreground/50 hover:bg-accent/50 transition-colors"
+              style={{ aspectRatio: "1618 / 2001" }}
+            >
+              <div className="flex flex-col items-center gap-2 p-4 text-center">
+                <div className="size-12 rounded-full bg-muted flex items-center justify-center">
+                  <Plus className="size-6" />
+                </div>
+                <p className="text-sm text-muted-foreground">Sign up to add more</p>
+              </div>
+            </div>
+          </SignUpButton>
+        )}
+
+        {isAtLimit && isAuthenticated && !isPro && checkoutUrl && (
+          <a
+            href={checkoutUrl}
+            className="relative border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer hover:border-foreground/50 hover:bg-accent/50 transition-colors"
+            style={{ aspectRatio: "1618 / 2001" }}
+          >
+            <div className="flex flex-col items-center gap-2 p-4 text-center">
+              <div className="size-12 rounded-full bg-muted flex items-center justify-center">
+                <Plus className="size-6" />
+              </div>
+              <p className="text-sm text-muted-foreground">Upgrade to add more</p>
+            </div>
+          </a>
+        )}
+
+        {reversedGoals.map((goal) => (
           <div
             key={goal.id}
             className="relative group"
