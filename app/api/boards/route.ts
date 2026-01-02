@@ -79,7 +79,7 @@ export async function POST(request: Request) {
   }
 
   const profile = await getProfileByIdentifier(identifier);
-  
+
   if (!profile) {
     return NextResponse.json({ error: "Profile not found. Upload a photo first." }, { status: 400 });
   }

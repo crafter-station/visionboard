@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 import { PhotoUpload } from "@/components/photo-upload";
 import { GalleryView } from "@/components/gallery-view";
@@ -12,6 +14,20 @@ import { ProBadge } from "@/components/ui/pro-badge";
 import { Button } from "@/components/ui/button";
 import { useVisionBoard } from "@/hooks/use-vision-board";
 import { ArrowLeft, Loader2 } from "lucide-react";
+
+function CheckoutSuccessHandler({ onSuccess }: { onSuccess: () => void }) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (searchParams.get("checkout") === "success") {
+      onSuccess();
+      router.replace("/");
+    }
+  }, [searchParams, onSuccess, router]);
+
+  return null;
+}
 
 export default function Home() {
   const {
@@ -42,6 +58,7 @@ export default function Home() {
     loadExistingBoard,
     resetToBoards,
     createBoardWithExistingPhoto,
+    refetchBoards,
   } = useVisionBoard();
 
   const checkoutUrl = userId
@@ -67,6 +84,9 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-background flex flex-col">
+      <Suspense fallback={null}>
+        <CheckoutSuccessHandler onSuccess={refetchBoards} />
+      </Suspense>
       <header className="border-b sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50">
         <div className="container mx-auto px-3 py-3 sm:px-4 sm:py-4">
           <div className="flex items-center justify-between gap-2">
@@ -123,27 +143,27 @@ export default function Home() {
       <div className="container mx-auto px-3 py-6 sm:px-4 sm:py-12 flex-1">
         {showUpload && (
           <div className="max-w-4xl mx-auto space-y-8 sm:space-y-12">
-            <div className="flex justify-center">
-              <img
-                src="/brand/hero-Image.png"
-                alt="Vision Board AI"
-                className="w-full max-w-md sm:max-w-2xl h-auto object-contain"
-              />
-            </div>
-            <div className="max-w-2xl mx-auto space-y-6 sm:space-y-8">
-              <div className="text-center space-y-2">
-                <h2 className="text-xl sm:text-3xl font-bold tracking-tight">
-                  Start with Your Photo
-                </h2>
-                <p className="text-sm sm:text-base text-muted-foreground">
-                  Upload a photo of yourself. We will remove the background and use
-                  it to place you in your dream scenarios.
-                </p>
-              </div>
-              <PhotoUpload visitorId={visitorId} onUploadComplete={onUploadComplete} />
-            </div>
+                <div className="flex justify-center">
+                  <img
+                    src="/brand/hero-Image.png"
+                    alt="Vision Board AI"
+                    className="w-full max-w-md sm:max-w-2xl h-auto object-contain"
+                  />
+                </div>
+                <div className="max-w-2xl mx-auto space-y-6 sm:space-y-8">
+                  <div className="text-center space-y-2">
+                    <h2 className="text-xl sm:text-3xl font-bold tracking-tight">
+                      Start with Your Photo
+                    </h2>
+                    <p className="text-sm sm:text-base text-muted-foreground">
+                      Upload a photo of yourself. We will remove the background and use
+                      it to place you in your dream scenarios.
+                    </p>
+                  </div>
+                  <PhotoUpload visitorId={visitorId} onUploadComplete={onUploadComplete} />
+                </div>
           </div>
-        )}
+            )}
 
         {showBoardsList && (
           <div className="max-w-4xl mx-auto space-y-8 sm:space-y-12">
@@ -179,7 +199,7 @@ export default function Home() {
                 <ArrowLeft className="size-4" />
                 Back
               </Button>
-            </div>
+                </div>
 
             <GalleryView
               boardId={boardData?.boardId}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import type { Goal } from "@/components/goal-input";
 import { useAuth } from "./use-auth";
 import type { VisionBoard, Goal as DBGoalType } from "@/db/schema";
@@ -88,6 +88,12 @@ export function useVisionBoard() {
     },
     enabled: !isLoadingAuth && (!!userId || !!visitorId),
   });
+
+  useEffect(() => {
+    if (hasMigrated) {
+      refetchBoards();
+    }
+  }, [hasMigrated, refetchBoards]);
 
   const uploadMutation = useMutation({
     mutationFn: async (data: { boardId: string; profileId: string; originalUrl: string; noBgUrl: string }) => {
@@ -356,7 +362,9 @@ export function useVisionBoard() {
   const photosUsed = boardsData?.usage?.photos ?? 0;
   const maxPhotos = boardsData?.limits?.MAX_PHOTOS_PER_USER ?? 3;
 
-  const canAddMoreGoals = isPaid ? credits > 0 : photosUsed < maxPhotos;
+  const pendingGoals = goals.filter((g) => g.isGenerating).length;
+  const effectivePhotosUsed = photosUsed + pendingGoals;
+  const canAddMoreGoals = isPaid ? credits > pendingGoals : effectivePhotosUsed < maxPhotos;
   const isAtLimit = !canAddMoreGoals;
   const isGenerating = goals.some((g) => g.isGenerating);
 

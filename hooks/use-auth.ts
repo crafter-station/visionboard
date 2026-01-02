@@ -1,7 +1,7 @@
 "use client";
 
 import { useUser } from "@clerk/nextjs";
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { useFingerprint } from "./use-fingerprint";
 
 interface AuthState {
@@ -15,7 +15,7 @@ interface AuthState {
 export function useAuth(): AuthState & { triggerMigration: () => Promise<void> } {
   const { user, isLoaded: clerkLoaded } = useUser();
   const { visitorId, isLoading: fingerprintLoading } = useFingerprint();
-  const hasMigratedRef = useRef(false);
+  const [hasMigrated, setHasMigrated] = useState(false);
   const migrationAttemptedRef = useRef(false);
 
   const userId = user?.id ?? null;
@@ -23,7 +23,7 @@ export function useAuth(): AuthState & { triggerMigration: () => Promise<void> }
   const isAuthenticated = !!userId;
 
   const triggerMigration = useCallback(async () => {
-    if (!userId || !visitorId || hasMigratedRef.current || migrationAttemptedRef.current) {
+    if (!userId || !visitorId || hasMigrated || migrationAttemptedRef.current) {
       return;
     }
 
@@ -39,25 +39,25 @@ export function useAuth(): AuthState & { triggerMigration: () => Promise<void> }
       });
 
       if (res.ok) {
-        hasMigratedRef.current = true;
+        setHasMigrated(true);
       }
     } catch {
       migrationAttemptedRef.current = false;
     }
-  }, [userId, visitorId]);
+  }, [userId, visitorId, hasMigrated]);
 
   useEffect(() => {
-    if (isAuthenticated && visitorId && !hasMigratedRef.current) {
+    if (isAuthenticated && visitorId && !hasMigrated) {
       triggerMigration();
     }
-  }, [isAuthenticated, visitorId, triggerMigration]);
+  }, [isAuthenticated, visitorId, hasMigrated, triggerMigration]);
 
   return {
     userId,
     visitorId,
     isLoading,
     isAuthenticated,
-    hasMigrated: hasMigratedRef.current,
+    hasMigrated,
     triggerMigration,
   };
 }

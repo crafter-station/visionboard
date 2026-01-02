@@ -71,7 +71,7 @@ export function ExistingBoards({
           <h3 className="text-base sm:text-lg font-semibold">Your Vision Boards</h3>
           {limits && usage && (
             <div className="text-xs sm:text-sm text-muted-foreground">
-              {usage.boards}/{limits.MAX_BOARDS_PER_USER === Infinity ? "unlimited" : limits.MAX_BOARDS_PER_USER} boards | {usage.photos}/{limits.MAX_PHOTOS_PER_USER} images
+              {usage.boards}/{limits.MAX_BOARDS_PER_USER >= 999999 ? "unlimited" : limits.MAX_BOARDS_PER_USER} boards | {usage.photos}/{limits.MAX_PHOTOS_PER_USER} images
             </div>
           )}
         </div>
@@ -89,11 +89,11 @@ export function ExistingBoards({
                 <div className="flex gap-3 sm:gap-4">
                   <div className="size-14 sm:size-16 rounded-md overflow-hidden bg-muted flex-shrink-0">
                     {avatarUrl && (
-                      <img
+                    <img
                         src={avatarUrl}
-                        alt="Profile"
-                        className="w-full h-full object-cover object-top"
-                      />
+                      alt="Profile"
+                      className="w-full h-full object-cover object-top"
+                    />
                     )}
                   </div>
                   <div className="flex-1 min-w-0 py-0.5">
