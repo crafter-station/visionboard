@@ -56,11 +56,9 @@ export function ImageCard({ imageUrl, phrase, isLoading, title }: ImageCardProps
     return (
       <div className="relative w-full h-full overflow-hidden">
         <Skeleton className="absolute inset-0" />
+        <div className="absolute inset-0 animate-border-beam" />
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center p-4">
-            <div className="size-6 border-2 border-foreground border-t-transparent animate-spin mx-auto mb-2" />
             <p className="text-xs text-muted-foreground">{loadingMessage}</p>
-          </div>
         </div>
       </div>
     );
@@ -124,7 +122,7 @@ export function ImageCard({ imageUrl, phrase, isLoading, title }: ImageCardProps
               height: `${(FRAME.text.height / FRAME.height) * 100}%`,
             }}
           >
-            <p className="text-center font-medium text-[0.5em] sm:text-[0.6em] md:text-[0.7em] leading-tight px-1">
+            <p className="text-center font-medium text-[0.5em] sm:text-[0.6em] md:text-[0.7em] leading-tight px-1 text-black">
               {phrase}
             </p>
           </div>

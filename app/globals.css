@@ -123,3 +123,47 @@
     @apply bg-background text-foreground;
   }
 }
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  z-index: 9999;
+}
+
+@property --border-beam-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes border-beam {
+  0% {
+    --border-beam-angle: 0deg;
+  }
+  100% {
+    --border-beam-angle: 360deg;
+  }
+}
+
+.animate-border-beam {
+  animation: border-beam 3s linear infinite;
+  background: linear-gradient(var(--card), var(--card)) padding-box,
+    conic-gradient(
+        from var(--border-beam-angle),
+        transparent 60%,
+        oklch(0.7 0 0 / 40%) 80%,
+        oklch(0.9 0 0 / 60%) 90%,
+        oklch(0.7 0 0 / 40%) 95%,
+        transparent 100%
+      )
+      border-box;
+  border: 1px solid transparent;
+}
