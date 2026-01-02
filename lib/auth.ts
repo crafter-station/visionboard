@@ -1,23 +1,17 @@
-import { headers } from "next/headers";
 import { auth } from "@clerk/nextjs/server";
 import { checkRateLimit, type RateLimitType } from "./rate-limit";
 import type { UserIdentifier } from "@/db/queries";
 import { getProfileByIdentifier, getCreditsForProfile } from "@/db/queries";
-
-export async function getVisitorId(): Promise<string | null> {
-  const headersList = await headers();
-  return headersList.get("x-visitor-id");
-}
 
 export async function getUserId(): Promise<string | null> {
   const { userId } = await auth();
   return userId;
 }
 
-export async function getAuthIdentifier(): Promise<UserIdentifier> {
-  const [userId, visitorId] = await Promise.all([getUserId(), getVisitorId()]);
-
-  return { userId, visitorId };
+export async function getAuthIdentifier(): Promise<UserIdentifier | null> {
+  const userId = await getUserId();
+  if (!userId) return null;
+  return { userId };
 }
 
 export async function isAuthenticated(): Promise<boolean> {
@@ -27,6 +21,7 @@ export async function isAuthenticated(): Promise<boolean> {
 
 export async function getUserCreditsCount(): Promise<number> {
   const identifier = await getAuthIdentifier();
+  if (!identifier) return 0;
   const profile = await getProfileByIdentifier(identifier);
   if (!profile) return 0;
   return getCreditsForProfile(profile.id);
@@ -41,37 +36,30 @@ export async function validateRequest(
   rateLimitType: RateLimitType = "general",
 ): Promise<{
   success: boolean;
-  visitorId: string | null;
   userId: string | null;
-  identifier: UserIdentifier;
+  identifier: UserIdentifier | null;
   error?: string;
   remaining?: number;
 }> {
-  const identifier = await getAuthIdentifier();
-  const { userId, visitorId } = identifier;
+  const userId = await getUserId();
 
-  const rateLimitKey = userId || visitorId;
-
-  if (!rateLimitKey) {
+  if (!userId) {
     return {
       success: false,
-      visitorId: null,
       userId: null,
-      identifier,
-      error: "Missing user identification",
+      identifier: null,
+      error: "Authentication required",
     };
   }
 
-  const { success, remaining } = await checkRateLimit(
-    rateLimitKey,
-    rateLimitType,
-  );
+  const identifier: UserIdentifier = { userId };
+
+  const { success, remaining } = await checkRateLimit(userId, rateLimitType);
 
   if (!success) {
     return {
       success: false,
-      visitorId: visitorId ?? null,
-      userId: userId ?? null,
+      userId,
       identifier,
       error: "Rate limit exceeded. Please try again later.",
       remaining,
@@ -80,8 +68,7 @@ export async function validateRequest(
 
   return {
     success: true,
-    visitorId: visitorId ?? null,
-    userId: userId ?? null,
+    userId,
     identifier,
     remaining,
   };

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
+import { UserButton } from "@clerk/nextjs";
 import { PhotoUpload } from "@/components/photo-upload";
 import { SponsorFooter } from "@/components/sponsor-footer";
 import { GithubBadge } from "@/components/github-badge";
@@ -12,6 +12,7 @@ import { UpgradeCTA } from "@/components/upgrade-cta";
 import { ProBadge } from "@/components/ui/pro-badge";
 import { Button } from "@/components/ui/button";
 import { useVisionBoard } from "@/hooks/use-vision-board";
+import { LIMITS } from "@/lib/constants";
 import { Loader2, CheckCircle } from "lucide-react";
 
 function CheckoutVerificationHandler({
@@ -66,8 +67,8 @@ function CheckoutVerificationHandler({
   if (verificationStatus === "idle") return null;
 
   return (
-    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] flex items-center justify-center">
-      <div className="bg-card border rounded-lg p-8 max-w-sm mx-4 text-center space-y-4">
+    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 safe-area-inset">
+      <div className="bg-card border rounded-lg p-6 sm:p-8 max-w-sm w-full text-center space-y-4 shadow-lg">
         {verificationStatus === "verifying" && (
           <>
             <Loader2 className="size-12 animate-spin mx-auto text-primary" />
@@ -86,7 +87,10 @@ function CheckoutVerificationHandler({
                 Your credits have been added!
               </p>
             </div>
-            <Button onClick={handleContinue} className="w-full">
+            <Button
+              onClick={handleContinue}
+              className="w-full min-h-[44px] touch-manipulation"
+            >
               Continue
             </Button>
           </>
@@ -104,7 +108,10 @@ function CheckoutVerificationHandler({
                 Your payment is being processed. Credits will appear shortly.
               </p>
             </div>
-            <Button onClick={handleContinue} className="w-full">
+            <Button
+              onClick={handleContinue}
+              className="w-full min-h-[44px] touch-manipulation"
+            >
               Continue
             </Button>
           </>
@@ -118,7 +125,6 @@ export default function DashboardPage() {
   const router = useRouter();
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
   const {
-    visitorId,
     isAuthenticated,
     isLoadingAuth,
     isLoadingBoards,
@@ -132,15 +138,23 @@ export default function DashboardPage() {
     hasExistingPhoto,
     onUploadComplete,
     deleteBoard,
+    renameBoard,
     createBoardWithExistingPhoto,
     refetchBoards,
   } = useVisionBoard();
+
+  // Redirect to landing if not authenticated
+  useEffect(() => {
+    if (!isLoadingAuth && !isAuthenticated) {
+      router.replace("/");
+    }
+  }, [isLoadingAuth, isAuthenticated, router]);
 
   const checkoutUrl = userId
     ? `/api/polar/checkout?products=${process.env.NEXT_PUBLIC_POLAR_PRODUCT_ID}&customerExternalId=${userId}`
     : null;
 
-  if (isLoadingAuth || isLoadingBoards) {
+  if (isLoadingAuth || isLoadingBoards || !isAuthenticated) {
     return (
       <main className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -188,34 +202,21 @@ export default function DashboardPage() {
             </div>
             <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
               {isPaid && <ProBadge credits={credits} />}
+              {!isPaid && (
+                <span className="text-xs px-2 py-1 bg-muted rounded-full text-muted-foreground">
+                  Free
+                </span>
+              )}
               <ThemeSwitcherButton />
               <GithubBadge />
-
-              {isAuthenticated ? (
-                <UserButton
-                  afterSignOutUrl="/"
-                  appearance={{
-                    elements: {
-                      avatarBox: "size-8 sm:size-9",
-                    },
-                  }}
-                />
-              ) : (
-                <div className="flex items-center gap-2">
-                  <SignInButton mode="modal">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="hidden sm:inline-flex"
-                    >
-                      Sign In
-                    </Button>
-                  </SignInButton>
-                  <SignUpButton mode="modal">
-                    <Button size="sm">Sign Up</Button>
-                  </SignUpButton>
-                </div>
-              )}
+              <UserButton
+                afterSignOutUrl="/"
+                appearance={{
+                  elements: {
+                    avatarBox: "size-8 sm:size-9",
+                  },
+                }}
+              />
             </div>
           </div>
         </div>
@@ -242,7 +243,6 @@ export default function DashboardPage() {
                 </p>
               </div>
               <PhotoUpload
-                visitorId={visitorId}
                 onUploadComplete={(data) => {
                   onUploadComplete(data);
                   router.push(`/b/${data.boardId}`);
@@ -259,6 +259,7 @@ export default function DashboardPage() {
               profile={profile}
               onSelectBoard={handleSelectBoard}
               onDeleteBoard={deleteBoard}
+              onRenameBoard={renameBoard}
               onCreateNewBoard={
                 canCreateNewBoard ? handleCreateBoard : undefined
               }
@@ -270,7 +271,7 @@ export default function DashboardPage() {
               <UpgradeCTA
                 isAuthenticated={isAuthenticated}
                 checkoutUrl={checkoutUrl}
-                message={`You've reached the limit of ${limits?.MAX_BOARDS_PER_USER} board${(limits?.MAX_BOARDS_PER_USER ?? 1) === 1 ? "" : "s"}. Upgrade for unlimited boards and 50 more images.`}
+                message={`You've reached the limit of ${limits?.MAX_BOARDS_PER_USER} board${(limits?.MAX_BOARDS_PER_USER ?? LIMITS.FREE_MAX_BOARDS) === 1 ? "" : "s"}. Upgrade for unlimited boards and 50 more images.`}
               />
             )}
           </div>

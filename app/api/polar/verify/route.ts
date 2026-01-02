@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { Polar } from "@polar-sh/sdk";
-import { getAuthIdentifier } from "@/lib/auth";
+import { getUserId } from "@/lib/auth";
 import {
   addCredits,
   LIMITS,
@@ -21,8 +21,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Missing checkout_id" }, { status: 400 });
   }
 
-  const identifier = await getAuthIdentifier();
-  const { userId } = identifier;
+  const userId = await getUserId();
 
   if (!userId) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });

@@ -4,18 +4,20 @@ import {
   getVisionBoardsForProfile,
   deleteVisionBoard,
   createVisionBoard,
+  updateVisionBoard,
   getUserLimits,
   countBoardsForProfile,
   getCreditsForProfile,
+  generateDefaultBoardName,
 } from "@/db/queries";
+import { LIMITS } from "@/lib/constants";
 import { getAuthIdentifier } from "@/lib/auth";
 
 export async function GET() {
   const identifier = await getAuthIdentifier();
-  const { userId, visitorId } = identifier;
 
-  if (!userId && !visitorId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!identifier) {
+    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
   }
 
   const profile = await getProfileByIdentifier(identifier);
@@ -25,15 +27,15 @@ export async function GET() {
       boards: [],
       profile: null,
       limits: {
-        MAX_BOARDS_PER_USER: 1,
-        MAX_GOALS_PER_BOARD: 4,
-        MAX_PHOTOS_PER_USER: 3,
+        MAX_BOARDS_PER_USER: LIMITS.FREE_MAX_BOARDS,
+        MAX_GOALS_PER_BOARD: LIMITS.MAX_GOALS_PER_BOARD,
+        MAX_PHOTOS_PER_USER: LIMITS.FREE_MAX_PHOTOS,
       },
       usage: {
         boards: 0,
         photos: 0,
       },
-      isAuthenticated: !!userId,
+      isAuthenticated: true,
       isPaid: false,
       credits: 0,
     });
@@ -64,18 +66,17 @@ export async function GET() {
       boards: boards.length,
       photos: totalPhotos,
     },
-    isAuthenticated: !!userId,
+    isAuthenticated: true,
     isPaid: limits.isPaid,
     credits,
   });
 }
 
-export async function POST(request: Request) {
+export async function POST() {
   const identifier = await getAuthIdentifier();
-  const { userId, visitorId } = identifier;
 
-  if (!userId && !visitorId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!identifier) {
+    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
   }
 
   const profile = await getProfileByIdentifier(identifier);
@@ -108,10 +109,12 @@ export async function POST(request: Request) {
     );
   }
 
-  const newBoard = await createVisionBoard(profile.id);
+  const boardName = generateDefaultBoardName(boardCount);
+  const newBoard = await createVisionBoard(profile.id, boardName);
 
   return NextResponse.json({
     boardId: newBoard.id,
+    boardName: newBoard.name,
     profileId: profile.id,
     avatarOriginalUrl: profile.avatarOriginalUrl,
     avatarNoBgUrl: profile.avatarNoBgUrl,
@@ -120,10 +123,9 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   const identifier = await getAuthIdentifier();
-  const { userId, visitorId } = identifier;
 
-  if (!userId && !visitorId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!identifier) {
+    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
   }
 
   const { searchParams } = new URL(request.url);
@@ -148,4 +150,41 @@ export async function DELETE(request: Request) {
   await deleteVisionBoard(boardId);
 
   return NextResponse.json({ success: true });
+}
+
+export async function PATCH(request: Request) {
+  const identifier = await getAuthIdentifier();
+
+  if (!identifier) {
+    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  }
+
+  const body = await request.json();
+  const { boardId, name } = body;
+
+  if (!boardId) {
+    return NextResponse.json({ error: "Missing board ID" }, { status: 400 });
+  }
+
+  if (!name || typeof name !== "string" || name.trim().length === 0) {
+    return NextResponse.json({ error: "Invalid board name" }, { status: 400 });
+  }
+
+  const trimmedName = name.trim().slice(0, 50);
+
+  const profile = await getProfileByIdentifier(identifier);
+  if (!profile) {
+    return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+  }
+
+  const boards = await getVisionBoardsForProfile(profile.id);
+  const board = boards.find((b) => b.id === boardId);
+
+  if (!board) {
+    return NextResponse.json({ error: "Board not found" }, { status: 404 });
+  }
+
+  const updatedBoard = await updateVisionBoard(boardId, { name: trimmedName });
+
+  return NextResponse.json({ success: true, board: updatedBoard });
 }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
+import { UserButton } from "@clerk/nextjs";
 import { ShareCanvas } from "@/components/share-canvas";
 import { GalleryView } from "@/components/gallery-view";
 import { SponsorFooter } from "@/components/sponsor-footer";
@@ -12,13 +12,14 @@ import { UpgradeCTA } from "@/components/upgrade-cta";
 import { ProBadge } from "@/components/ui/pro-badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { useFingerprint } from "@/hooks/use-fingerprint";
+import { LIMITS } from "@/lib/constants";
 import type { Goal as GoalType } from "@/components/goal-input";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
 interface BoardData {
   id: string;
   profileId: string;
+  name: string;
   createdAt: Date;
   goals: Array<{
     id: string;
@@ -35,7 +36,6 @@ interface BoardData {
   }>;
   profile: {
     id: string;
-    visitorId: string | null;
     userId: string | null;
     avatarOriginalUrl: string | null;
     avatarNoBgUrl: string | null;
@@ -48,27 +48,19 @@ interface BoardViewProps {
   board: BoardData;
 }
 
-function createAuthHeaders(visitorId: string | null): HeadersInit {
-  const headers: HeadersInit = { "Content-Type": "application/json" };
-  if (visitorId) {
-    headers["x-visitor-id"] = visitorId;
-  }
-  return headers;
-}
+const defaultHeaders: HeadersInit = { "Content-Type": "application/json" };
 
 export function BoardView({ board }: BoardViewProps) {
   const router = useRouter();
   const { userId, isLoading: isLoadingAuth, isAuthenticated } = useAuth();
-  const { visitorId } = useFingerprint();
   const [goals, setGoals] = useState<GoalType[]>([]);
   const [isAddingGoal, setIsAddingGoal] = useState(false);
   const [isPaid, setIsPaid] = useState(false);
   const [credits, setCredits] = useState(0);
   const [usage, setUsage] = useState({ photos: 0 });
-  const [maxPhotos, setMaxPhotos] = useState(1);
+  const [maxPhotos, setMaxPhotos] = useState(LIMITS.FREE_MAX_PHOTOS);
 
-  const isOwner =
-    board.profile.userId === userId || board.profile.visitorId === visitorId;
+  const isOwner = isAuthenticated && board.profile.userId === userId;
   const userPhotoUrl = board.profile.avatarNoBgUrl ?? undefined;
 
   useEffect(() => {
@@ -94,7 +86,7 @@ export function BoardView({ board }: BoardViewProps) {
           const data = await res.json();
           setIsPaid(data.isPaid);
           setCredits(data.credits);
-          setMaxPhotos(data.maxPhotos ?? 3);
+          setMaxPhotos(data.maxPhotos ?? LIMITS.FREE_MAX_PHOTOS);
         }
       } catch {
         // Silently fail
@@ -103,9 +95,7 @@ export function BoardView({ board }: BoardViewProps) {
 
     const fetchUsage = async () => {
       try {
-        const res = await fetch("/api/boards", {
-          headers: createAuthHeaders(visitorId),
-        });
+        const res = await fetch("/api/boards", { headers: defaultHeaders });
         if (res.ok) {
           const data = await res.json();
           setUsage({ photos: data.usage?.photos ?? 0 });
@@ -117,7 +107,7 @@ export function BoardView({ board }: BoardViewProps) {
 
     fetchCredits();
     fetchUsage();
-  }, [isOwner, visitorId]);
+  }, [isOwner]);
 
   const generatingGoalIds = goals
     .filter((g) => g.status === "generating" || g.status === "pending")
@@ -131,7 +121,7 @@ export function BoardView({ board }: BoardViewProps) {
     const intervalId = setInterval(async () => {
       try {
         const res = await fetch(`/api/goals?boardId=${board.id}`, {
-          headers: createAuthHeaders(visitorId),
+          headers: defaultHeaders,
         });
         if (!res.ok) return;
 
@@ -165,7 +155,7 @@ export function BoardView({ board }: BoardViewProps) {
     }, 3000);
 
     return () => clearInterval(intervalId);
-  }, [generatingGoalIds, board.id, visitorId, isOwner]);
+  }, [generatingGoalIds, board.id, isOwner]);
 
   const addAndGenerateGoal = useCallback(
     async (title: string) => {
@@ -177,7 +167,7 @@ export function BoardView({ board }: BoardViewProps) {
       try {
         const goalRes = await fetch("/api/goals", {
           method: "POST",
-          headers: createAuthHeaders(visitorId),
+          headers: defaultHeaders,
           body: JSON.stringify({ boardId: board.id, title }),
         });
         if (!goalRes.ok) throw new Error("Failed to create goal");
@@ -195,7 +185,7 @@ export function BoardView({ board }: BoardViewProps) {
         const [imageResult, phraseResult] = await Promise.all([
           fetch("/api/generate-image", {
             method: "POST",
-            headers: createAuthHeaders(visitorId),
+            headers: defaultHeaders,
             body: JSON.stringify({
               userImageUrl: userPhotoUrl,
               goalId: dbGoal.id,
@@ -204,7 +194,7 @@ export function BoardView({ board }: BoardViewProps) {
           }).then((r) => r.json()),
           fetch("/api/generate-phrase", {
             method: "POST",
-            headers: createAuthHeaders(visitorId),
+            headers: defaultHeaders,
             body: JSON.stringify({ goalId: dbGoal.id, goalTitle: title }),
           }).then((r) => r.json()),
         ]);
@@ -241,7 +231,7 @@ export function BoardView({ board }: BoardViewProps) {
         setIsAddingGoal(false);
       }
     },
-    [board.id, userPhotoUrl, visitorId],
+    [board.id, userPhotoUrl],
   );
 
   const regenerateGoalImage = useCallback(
@@ -263,7 +253,7 @@ export function BoardView({ board }: BoardViewProps) {
         const [imageResult, phraseResult] = await Promise.all([
           fetch("/api/generate-image", {
             method: "POST",
-            headers: createAuthHeaders(visitorId),
+            headers: defaultHeaders,
             body: JSON.stringify({
               userImageUrl: userPhotoUrl,
               goalId,
@@ -272,7 +262,7 @@ export function BoardView({ board }: BoardViewProps) {
           }).then((r) => r.json()),
           fetch("/api/generate-phrase", {
             method: "POST",
-            headers: createAuthHeaders(visitorId),
+            headers: defaultHeaders,
             body: JSON.stringify({ goalId, goalTitle: goal.title }),
           }).then((r) => r.json()),
         ]);
@@ -300,23 +290,20 @@ export function BoardView({ board }: BoardViewProps) {
         );
       }
     },
-    [goals, userPhotoUrl, visitorId],
+    [goals, userPhotoUrl],
   );
 
-  const deleteGoal = useCallback(
-    async (goalId: string) => {
-      try {
-        await fetch(`/api/goals?id=${goalId}`, {
-          method: "DELETE",
-          headers: createAuthHeaders(visitorId),
-        });
-        setGoals((prev) => prev.filter((g) => g.id !== goalId));
-      } catch {
-        // Silently fail
-      }
-    },
-    [visitorId],
-  );
+  const deleteGoal = useCallback(async (goalId: string) => {
+    try {
+      await fetch(`/api/goals?id=${goalId}`, {
+        method: "DELETE",
+        headers: defaultHeaders,
+      });
+      setGoals((prev) => prev.filter((g) => g.id !== goalId));
+    } catch {
+      // Silently fail
+    }
+  }, []);
 
   const checkoutUrl = userId
     ? `/api/polar/checkout?products=${process.env.NEXT_PUBLIC_POLAR_PRODUCT_ID}&customerExternalId=${userId}`
@@ -337,6 +324,7 @@ export function BoardView({ board }: BoardViewProps) {
     );
   }
 
+  // Public view for non-owners
   if (!isOwner) {
     return (
       <main className="min-h-screen bg-background flex flex-col">
@@ -352,12 +340,9 @@ export function BoardView({ board }: BoardViewProps) {
               <div className="flex items-center gap-4">
                 <ThemeSwitcherButton />
                 <GithubBadge />
-                <a
-                  href="/b"
-                  className="text-sm font-medium hover:underline underline-offset-4"
-                >
-                  Create your own
-                </a>
+                <Button asChild>
+                  <a href="/b">Create your own</a>
+                </Button>
               </div>
             </div>
           </div>
@@ -372,6 +357,7 @@ export function BoardView({ board }: BoardViewProps) {
     );
   }
 
+  // Owner view with editing capabilities
   return (
     <main className="min-h-screen bg-background flex flex-col">
       <header className="border-b sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50">
@@ -398,34 +384,21 @@ export function BoardView({ board }: BoardViewProps) {
             </div>
             <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
               {isPaid && <ProBadge credits={credits} />}
+              {!isPaid && (
+                <span className="text-xs px-2 py-1 bg-muted rounded-full text-muted-foreground">
+                  Free
+                </span>
+              )}
               <ThemeSwitcherButton />
               <GithubBadge />
-
-              {isAuthenticated ? (
-                <UserButton
-                  afterSignOutUrl="/"
-                  appearance={{
-                    elements: {
-                      avatarBox: "size-8 sm:size-9",
-                    },
-                  }}
-                />
-              ) : (
-                <div className="flex items-center gap-2">
-                  <SignInButton mode="modal">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="hidden sm:inline-flex"
-                    >
-                      Sign In
-                    </Button>
-                  </SignInButton>
-                  <SignUpButton mode="modal">
-                    <Button size="sm">Sign Up</Button>
-                  </SignUpButton>
-                </div>
-              )}
+              <UserButton
+                afterSignOutUrl="/"
+                appearance={{
+                  elements: {
+                    avatarBox: "size-8 sm:size-9",
+                  },
+                }}
+              />
             </div>
           </div>
         </div>
@@ -467,11 +440,7 @@ export function BoardView({ board }: BoardViewProps) {
             <UpgradeCTA
               isAuthenticated={isAuthenticated}
               checkoutUrl={checkoutUrl}
-              message={
-                isAuthenticated
-                  ? "You've used all your free images. Upgrade to get 50 more generations."
-                  : "You've used all 3 free images. Sign up to get more."
-              }
+              message="You've used all your free images. Upgrade to get more :)"
             />
           )}
 

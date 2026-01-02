@@ -9,7 +9,7 @@ export function SponsorFooter() {
     <footer className="border-t py-6 sm:py-8 mt-auto">
       <div className="container mx-auto px-4">
         <div className="flex flex-col items-center gap-3 sm:gap-4">
-          <p className="text-xs sm:text-sm text-muted-foreground">Built with</p>
+          <p className="text-xs sm:text-sm text-muted-foreground">Built with 💛 💜 💚</p>
           <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-8">
             <a
               href="https://crafter.station"

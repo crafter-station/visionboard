@@ -16,13 +16,13 @@ import { goals } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 export async function POST(request: Request) {
-  const { success, userId, visitorId, identifier, error, remaining } =
+  const { success, identifier, error, remaining } =
     await validateRequest("image-gen");
 
-  if (!success || (!userId && !visitorId)) {
+  if (!success || !identifier) {
     return NextResponse.json(
-      { error: error || "Unauthorized", remaining },
-      { status: 429 },
+      { error: error || "Authentication required", remaining },
+      { status: identifier ? 429 : 401 },
     );
   }
 
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
       if (photoCount >= LIMITS.FREE_MAX_PHOTOS) {
         return NextResponse.json(
           {
-            error: `Free limit of ${LIMITS.FREE_MAX_PHOTOS} images reached. Sign in and purchase credits for unlimited boards and 50 more images.`,
+            error: `Free limit of ${LIMITS.FREE_MAX_PHOTOS} image${LIMITS.FREE_MAX_PHOTOS === 1 ? "" : "s"} reached. Purchase credits for more.`,
             requiresUpgrade: true,
           },
           { status: 400 },

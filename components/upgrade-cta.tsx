@@ -59,7 +59,7 @@ export function UpgradeCTA({
       </div>
       {isAuthenticated ? (
         <Button asChild>
-          <a href={checkoutUrl || "#"}>Upgrade - $5 for 50 images</a>
+          <a href={checkoutUrl || "#"}>Upgrade - $5 for more</a>
         </Button>
       ) : (
         <SignUpButton mode="modal">

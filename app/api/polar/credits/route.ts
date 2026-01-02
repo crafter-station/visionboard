@@ -8,9 +8,8 @@ import {
 
 export async function GET() {
   const identifier = await getAuthIdentifier();
-  const { userId } = identifier;
 
-  if (!userId) {
+  if (!identifier) {
     return NextResponse.json({ credits: 0, isPaid: false });
   }
 

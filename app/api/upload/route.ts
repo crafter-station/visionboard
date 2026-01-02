@@ -10,14 +10,14 @@ import {
 } from "@/db/queries";
 
 export async function POST(request: Request) {
-  const { success, userId, visitorId, identifier, error, remaining } =
+  const { success, identifier, error, remaining } =
     await validateRequest("upload");
 
-  if (!success || (!userId && !visitorId)) {
+  if (!success || !identifier) {
     return NextResponse.json(
-      { error: error || "Unauthorized" },
+      { error: error || "Authentication required" },
       {
-        status: success ? 400 : 429,
+        status: identifier ? 429 : 401,
         headers: remaining
           ? { "X-RateLimit-Remaining": String(remaining) }
           : {},
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   if (boardCount >= limits.maxBoards && !profile.avatarNoBgUrl) {
     return NextResponse.json(
       {
-        error: "Maximum boards limit reached. Sign up and upgrade for more.",
+        error: "Maximum boards limit reached. Upgrade for more.",
         requiresUpgrade: !limits.isPaid,
       },
       { status: 400 },

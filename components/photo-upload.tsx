@@ -17,7 +17,6 @@ const LOADING_MESSAGES = [
 ];
 
 interface PhotoUploadProps {
-  visitorId: string | null;
   onUploadComplete: (data: {
     boardId: string;
     profileId: string;
@@ -26,7 +25,7 @@ interface PhotoUploadProps {
   }) => void;
 }
 
-export function PhotoUpload({ visitorId, onUploadComplete }: PhotoUploadProps) {
+export function PhotoUpload({ onUploadComplete }: PhotoUploadProps) {
   const isMobile = useIsMobile();
   const [isDragging, setIsDragging] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
@@ -57,10 +56,6 @@ export function PhotoUpload({ visitorId, onUploadComplete }: PhotoUploadProps) {
 
   const processFile = async (file: File) => {
     if (!file.type.startsWith("image/")) return;
-    if (!visitorId) {
-      setError("Unable to verify identity. Please refresh the page.");
-      return;
-    }
 
     setError(null);
 
@@ -75,7 +70,6 @@ export function PhotoUpload({ visitorId, onUploadComplete }: PhotoUploadProps) {
 
     const uploadRes = await fetch("/api/upload", {
       method: "POST",
-      headers: { "x-visitor-id": visitorId },
       body: formData,
     });
 
@@ -93,10 +87,7 @@ export function PhotoUpload({ visitorId, onUploadComplete }: PhotoUploadProps) {
 
     const bgRes = await fetch("/api/remove-background", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-visitor-id": visitorId,
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ imageUrl: url }),
     });
 
@@ -113,17 +104,14 @@ export function PhotoUpload({ visitorId, onUploadComplete }: PhotoUploadProps) {
     onUploadComplete(data);
   };
 
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setIsDragging(false);
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
 
-      const file = e.dataTransfer.files[0];
-      if (file) processFile(file);
-    },
-    [visitorId],
-  );
+    const file = e.dataTransfer.files[0];
+    if (file) processFile(file);
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

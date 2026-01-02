@@ -12,6 +12,14 @@ const dmMono = DM_Mono({
   weight: ["300", "400", "500"],
 });
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.agenticboard.xyz"),
   title: "Agentic Vision Board",

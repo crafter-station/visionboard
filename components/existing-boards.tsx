@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +25,7 @@ interface ExistingBoardsProps {
   profile?: ProfileData | null;
   onSelectBoard: (board: VisionBoard & { goals: Goal[] }) => void;
   onDeleteBoard: (boardId: string) => void;
+  onRenameBoard?: (boardId: string, newName: string) => void;
   onCreateNewBoard?: () => void;
   limits?: {
     MAX_BOARDS_PER_USER: number;
@@ -41,15 +43,32 @@ export function ExistingBoards({
   profile,
   onSelectBoard,
   onDeleteBoard,
+  onRenameBoard,
   onCreateNewBoard,
   limits,
   usage,
 }: ExistingBoardsProps) {
   const [boardToDelete, setBoardToDelete] = useState<string | null>(null);
+  const [boardToRename, setBoardToRename] = useState<{ id: string; name: string } | null>(null);
+  const [newName, setNewName] = useState("");
 
   if (boards.length === 0) return null;
 
   const avatarUrl = profile?.avatarNoBgUrl;
+
+  const handleRenameClick = (e: React.MouseEvent, board: VisionBoard & { goals: Goal[] }) => {
+    e.stopPropagation();
+    setBoardToRename({ id: board.id, name: board.name });
+    setNewName(board.name);
+  };
+
+  const handleRenameSubmit = () => {
+    if (boardToRename && newName.trim() && onRenameBoard) {
+      onRenameBoard(boardToRename.id, newName.trim());
+      setBoardToRename(null);
+      setNewName("");
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -118,27 +137,37 @@ export function ExistingBoards({
                     )}
                   </div>
                   <div className="flex-1 min-w-0 py-0.5">
-                    <p className="text-sm font-medium truncate">
-                      {totalGoals} goal{totalGoals !== 1 ? "s" : ""}
-                    </p>
+                    <p className="text-sm font-medium truncate">{board.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {completedGoals}/{totalGoals} generated
+                      {completedGoals}/{totalGoals} goals generated
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       {new Date(board.createdAt).toLocaleDateString()}
                     </p>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-10 sm:size-9 flex-shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setBoardToDelete(board.id);
-                    }}
-                  >
-                    <Trash2 className="size-4 text-destructive" />
-                  </Button>
+                  <div className="flex flex-col gap-1">
+                    {onRenameBoard && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 flex-shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => handleRenameClick(e, board)}
+                      >
+                        <Pencil className="size-3.5 text-muted-foreground" />
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 flex-shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setBoardToDelete(board.id);
+                      }}
+                    >
+                      <Trash2 className="size-3.5 text-destructive" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             );
@@ -172,6 +201,55 @@ export function ExistingBoards({
               }}
             >
               Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!boardToRename}
+        onOpenChange={(open) => {
+          if (!open) {
+            setBoardToRename(null);
+            setNewName("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md rounded-lg">
+          <DialogHeader>
+            <DialogTitle>Rename Vision Board</DialogTitle>
+            <DialogDescription>
+              Give your vision board a memorable name.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Enter board name"
+              maxLength={50}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleRenameSubmit();
+                }
+              }}
+            />
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setBoardToRename(null);
+                setNewName("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRenameSubmit}
+              disabled={!newName.trim() || newName.trim() === boardToRename?.name}
+            >
+              Save
             </Button>
           </DialogFooter>
         </DialogContent>

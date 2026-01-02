@@ -23,6 +23,7 @@ export const visionBoards = pgTable("vision_boards", {
   profileId: text("profile_id")
     .references(() => userProfiles.id, { onDelete: "cascade" })
     .notNull(),
+  name: text("name").default("2026 Vision Board").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

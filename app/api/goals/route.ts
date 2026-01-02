@@ -14,11 +14,11 @@ export async function POST(request: Request) {
   const { success, identifier, error, remaining } =
     await validateRequest("goals");
 
-  if (!success) {
+  if (!success || !identifier) {
     return NextResponse.json(
-      { error: error || "Unauthorized" },
+      { error: error || "Authentication required" },
       {
-        status: 429,
+        status: identifier ? 429 : 401,
         headers: remaining
           ? { "X-RateLimit-Remaining": String(remaining) }
           : {},
@@ -64,13 +64,13 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const { success, error, remaining } = await validateRequest("goals");
+  const { success, identifier, error, remaining } = await validateRequest("goals");
 
-  if (!success) {
+  if (!success || !identifier) {
     return NextResponse.json(
-      { error: error || "Unauthorized" },
+      { error: error || "Authentication required" },
       {
-        status: 429,
+        status: identifier ? 429 : 401,
         headers: remaining
           ? { "X-RateLimit-Remaining": String(remaining) }
           : {},

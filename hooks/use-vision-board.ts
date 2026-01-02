@@ -5,6 +5,7 @@ import { useCallback, useState, useEffect, useRef } from "react";
 import type { Goal } from "@/components/goal-input";
 import { useAuth } from "./use-auth";
 import type { VisionBoard, Goal as DBGoalType } from "@/db/schema";
+import { LIMITS } from "@/lib/constants";
 
 interface ProfileData {
   id: string;
@@ -42,22 +43,15 @@ interface BoardsResponse {
   credits: number;
 }
 
-function createAuthHeaders(visitorId: string | null): HeadersInit {
-  const headers: HeadersInit = { "Content-Type": "application/json" };
-  if (visitorId) {
-    headers["x-visitor-id"] = visitorId;
-  }
-  return headers;
-}
+const defaultHeaders: HeadersInit = { "Content-Type": "application/json" };
 
 async function saveGoalToDatabase(
   boardId: string,
   title: string,
-  visitorId: string | null,
 ): Promise<DBGoal> {
   const res = await fetch("/api/goals", {
     method: "POST",
-    headers: createAuthHeaders(visitorId),
+    headers: defaultHeaders,
     body: JSON.stringify({ boardId, title }),
   });
   if (!res.ok) {
@@ -69,19 +63,13 @@ async function saveGoalToDatabase(
 
 export function useVisionBoard() {
   const queryClient = useQueryClient();
-  const {
-    userId,
-    visitorId,
-    isLoading: isLoadingAuth,
-    isAuthenticated,
-    hasMigrated,
-  } = useAuth();
+  const { userId, isLoading: isLoadingAuth, isAuthenticated } = useAuth();
   const [boardData, setBoardData] = useState<BoardData | null>(null);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [step, setStep] = useState<"upload" | "gallery">("upload");
   const [isAddingGoal, setIsAddingGoal] = useState(false);
 
-  const queryKey = ["boards", userId || visitorId];
+  const queryKey = ["boards", userId];
 
   const {
     data: boardsData,
@@ -90,20 +78,12 @@ export function useVisionBoard() {
   } = useQuery<BoardsResponse>({
     queryKey,
     queryFn: async () => {
-      const res = await fetch("/api/boards", {
-        headers: createAuthHeaders(visitorId),
-      });
+      const res = await fetch("/api/boards", { headers: defaultHeaders });
       if (!res.ok) throw new Error("Failed to fetch boards");
       return res.json();
     },
-    enabled: !isLoadingAuth && (!!userId || !!visitorId),
+    enabled: !isLoadingAuth && isAuthenticated,
   });
-
-  useEffect(() => {
-    if (hasMigrated) {
-      refetchBoards();
-    }
-  }, [hasMigrated, refetchBoards]);
 
   const goalsRef = useRef(goals);
   goalsRef.current = goals;
@@ -120,7 +100,7 @@ export function useVisionBoard() {
     const intervalId = setInterval(async () => {
       try {
         const res = await fetch(`/api/goals?boardId=${boardData.boardId}`, {
-          headers: createAuthHeaders(visitorId),
+          headers: defaultHeaders,
         });
         if (!res.ok) return;
 
@@ -147,7 +127,7 @@ export function useVisionBoard() {
     }, 3000);
 
     return () => clearInterval(intervalId);
-  }, [generatingGoalIds, boardData?.boardId, visitorId]);
+  }, [generatingGoalIds, boardData?.boardId]);
 
   const uploadMutation = useMutation({
     mutationFn: async (data: {
@@ -183,7 +163,7 @@ export function useVisionBoard() {
     }) => {
       const res = await fetch("/api/generate-image", {
         method: "POST",
-        headers: createAuthHeaders(visitorId),
+        headers: defaultHeaders,
         body: JSON.stringify({
           userImageUrl,
           goalId,
@@ -208,7 +188,7 @@ export function useVisionBoard() {
     }) => {
       const res = await fetch("/api/generate-phrase", {
         method: "POST",
-        headers: createAuthHeaders(visitorId),
+        headers: defaultHeaders,
         body: JSON.stringify({ goalId, goalTitle }),
       });
       if (!res.ok) {
@@ -223,7 +203,7 @@ export function useVisionBoard() {
     mutationFn: async (goalId: string) => {
       const res = await fetch(`/api/goals?id=${goalId}`, {
         method: "DELETE",
-        headers: createAuthHeaders(visitorId),
+        headers: defaultHeaders,
       });
       if (!res.ok) throw new Error("Failed to delete goal");
       return res.json();
@@ -237,9 +217,24 @@ export function useVisionBoard() {
     mutationFn: async (boardId: string) => {
       const res = await fetch(`/api/boards?id=${boardId}`, {
         method: "DELETE",
-        headers: createAuthHeaders(visitorId),
+        headers: defaultHeaders,
       });
       if (!res.ok) throw new Error("Failed to delete board");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+
+  const renameBoardMutation = useMutation({
+    mutationFn: async ({ boardId, name }: { boardId: string; name: string }) => {
+      const res = await fetch("/api/boards", {
+        method: "PATCH",
+        headers: defaultHeaders,
+        body: JSON.stringify({ boardId, name }),
+      });
+      if (!res.ok) throw new Error("Failed to rename board");
       return res.json();
     },
     onSuccess: () => {
@@ -279,11 +274,7 @@ export function useVisionBoard() {
       let goalId: string | null = null;
 
       try {
-        const dbGoal = await saveGoalToDatabase(
-          boardData.boardId,
-          title,
-          visitorId,
-        );
+        const dbGoal = await saveGoalToDatabase(boardData.boardId, title);
         goalId = dbGoal.id;
 
         const newGoal: Goal = {
@@ -337,14 +328,7 @@ export function useVisionBoard() {
         setIsAddingGoal(false);
       }
     },
-    [
-      boardData,
-      visitorId,
-      generateImageMutation,
-      generatePhraseMutation,
-      queryClient,
-      queryKey,
-    ],
+    [boardData, generateImageMutation, generatePhraseMutation, queryClient, queryKey],
   );
 
   const regenerateGoalImage = useCallback(
@@ -400,14 +384,7 @@ export function useVisionBoard() {
         );
       }
     },
-    [
-      boardData,
-      goals,
-      generateImageMutation,
-      generatePhraseMutation,
-      queryClient,
-      queryKey,
-    ],
+    [boardData, goals, generateImageMutation, generatePhraseMutation, queryClient, queryKey],
   );
 
   const deleteGoal = useCallback(
@@ -430,6 +407,13 @@ export function useVisionBoard() {
     [deleteBoardMutation, boardData],
   );
 
+  const renameBoard = useCallback(
+    async (boardId: string, newName: string) => {
+      await renameBoardMutation.mutateAsync({ boardId, name: newName });
+    },
+    [renameBoardMutation],
+  );
+
   const resetToBoards = useCallback(() => {
     setBoardData(null);
     setGoals([]);
@@ -439,11 +423,11 @@ export function useVisionBoard() {
   const createBoardWithExistingPhoto = useCallback(async (): Promise<string | null> => {
     const profile = boardsData?.profile;
     if (!profile?.avatarNoBgUrl) return null;
-    if (!userId && !visitorId) return null;
+    if (!userId) return null;
 
     const res = await fetch("/api/boards", {
       method: "POST",
-      headers: createAuthHeaders(visitorId),
+      headers: defaultHeaders,
     });
 
     if (!res.ok) {
@@ -462,14 +446,14 @@ export function useVisionBoard() {
     setStep("gallery");
     queryClient.invalidateQueries({ queryKey });
     return data.boardId;
-  }, [boardsData, userId, visitorId, queryClient, queryKey]);
+  }, [boardsData, userId, queryClient, queryKey]);
 
   const profile = boardsData?.profile;
   const hasExistingPhoto = !!profile?.avatarNoBgUrl;
   const isPaid = boardsData?.isPaid ?? false;
   const credits = boardsData?.credits ?? 0;
   const photosUsed = boardsData?.usage?.photos ?? 0;
-  const maxPhotos = boardsData?.limits?.MAX_PHOTOS_PER_USER ?? 3;
+  const maxPhotos = boardsData?.limits?.MAX_PHOTOS_PER_USER ?? LIMITS.FREE_MAX_PHOTOS;
 
   const pendingGoals = goals.filter((g) => g.isGenerating).length;
   const effectivePhotosUsed = photosUsed + pendingGoals;
@@ -480,10 +464,8 @@ export function useVisionBoard() {
   const isGenerating = goals.some((g) => g.isGenerating);
 
   return {
-    visitorId,
     userId,
     isAuthenticated,
-    hasMigrated,
     isLoadingAuth,
     isLoadingBoards,
     boardData,
@@ -507,6 +489,7 @@ export function useVisionBoard() {
     regenerateGoalImage,
     deleteGoal,
     deleteBoard,
+    renameBoard,
     loadExistingBoard,
     resetToBoards,
     createBoardWithExistingPhoto,

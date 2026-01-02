@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { SponsorFooter } from "@/components/sponsor-footer";
 import { GithubBadge } from "@/components/github-badge";
 import { ThemeSwitcherButton } from "@/components/elements/theme-switcher-button";
-import { Loader2, ArrowRight } from "lucide-react";
+import { Loader2, ArrowRight, Sparkles } from "lucide-react";
 
 export default function LandingPage() {
   const { isLoaded, isSignedIn } = useAuth();
@@ -81,29 +81,26 @@ export default function LandingPage() {
           <div className="max-w-2xl mx-auto space-y-6 sm:space-y-8">
             <div className="space-y-4">
               <h2 className="text-2xl sm:text-4xl font-bold tracking-tight">
-                Create Your 2026 Vision Board
+                Create Your 2026 AI Powered Vision Board
               </h2>
               <p className="text-base sm:text-lg text-muted-foreground">
-                Upload your photo and let AI place you in your dream scenarios.
-                Visualize your goals and manifest your future.
+              Visualize your goals. Manifest your future.
               </p>
             </div>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <SignUpButton mode="modal">
                 <Button size="lg" className="gap-2 w-full sm:w-auto">
-                  Get Started
+                  Get Started Free
                   <ArrowRight className="size-4" />
                 </Button>
               </SignUpButton>
-              <Button
-                variant="outline"
-                size="lg"
-                className="w-full sm:w-auto"
-                onClick={() => router.push("/b")}
-              >
-                Try without account
-              </Button>
+              <SignInButton mode="modal">
+                <Button variant="outline" size="lg" className="gap-2 w-full sm:w-auto">
+                  I have an account
+                </Button>
+              </SignInButton>
             </div>
+            
           </div>
         </div>
       </div>

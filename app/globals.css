@@ -124,6 +124,17 @@
   }
 }
 
+.safe-area-inset {
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+.touch-manipulation {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation: none;

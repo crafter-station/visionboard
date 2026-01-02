@@ -12,14 +12,14 @@ import {
 import { validateRequest } from "@/lib/auth";
 
 export async function POST(request: Request) {
-  const { success, userId, visitorId, identifier, error, remaining } =
+  const { success, identifier, error, remaining } =
     await validateRequest("bg-removal");
 
-  if (!success || (!userId && !visitorId)) {
+  if (!success || !identifier) {
     return NextResponse.json(
-      { error: error || "Unauthorized" },
+      { error: error || "Authentication required" },
       {
-        status: success ? 400 : 429,
+        status: identifier ? 429 : 401,
         headers: remaining
           ? { "X-RateLimit-Remaining": String(remaining) }
           : {},
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   if (boardCount >= limits.maxBoards) {
     return NextResponse.json(
       {
-        error: `Maximum ${limits.maxBoards} board${limits.maxBoards === 1 ? "" : "s"} allowed. ${!limits.isPaid ? "Sign up and upgrade for more." : "Delete an existing board to create a new one."}`,
+        error: `Maximum ${limits.maxBoards} board${limits.maxBoards === 1 ? "" : "s"} allowed. ${!limits.isPaid ? "Upgrade for more." : "Delete an existing board to create a new one."}`,
         requiresUpgrade: !limits.isPaid,
       },
       { status: 400 },
