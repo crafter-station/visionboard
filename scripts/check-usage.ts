@@ -29,6 +29,7 @@ interface TimeBucket {
   results: UsageResult[];
 }
 
+
 interface UsageResponse {
   time_series: TimeBucket[];
 }
