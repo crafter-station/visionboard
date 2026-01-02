@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { useTheme } from "next-themes";
 import { ImageCard } from "@/components/image-card";
 import type { VisionBoard, Goal } from "@/db/schema";
 
@@ -30,7 +31,13 @@ interface ShareCanvasProps {
 }
 
 export function ShareCanvas({ board }: ShareCanvasProps) {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const goalsWithImages = board.goals.filter((g) => g.generatedImageUrl);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const rotations = useMemo(() => {
     const map: Record<string, number> = {};
@@ -50,15 +57,19 @@ export function ShareCanvas({ board }: ShareCanvasProps) {
     );
   }
 
+  const isDark = mounted && resolvedTheme === "dark";
+
   return (
-    <div
-      className="relative min-h-[500px] rounded-lg overflow-hidden p-8"
-      style={{
-        backgroundImage: "url(/bg/white-background.png)",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }}
-    >
+    <div className="relative min-h-[500px] rounded-lg overflow-hidden p-8">
+      <div
+        className="absolute inset-0 -z-10"
+        style={{
+          backgroundImage: "url(/bg/white-background.png)",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          filter: isDark ? "invert(1) hue-rotate(180deg)" : undefined,
+        }}
+      />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-12 max-w-3xl mx-auto">
         {goalsWithImages.map((goal, index) => {
           const rotation = rotations[goal.id] ?? 0;
