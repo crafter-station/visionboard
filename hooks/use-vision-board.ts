@@ -1,9 +1,9 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState } from "react";
 import type { Goal } from "@/components/goal-input";
-import { useFingerprint } from "./use-fingerprint";
+import { useAuth } from "./use-auth";
 import type { VisionBoard, Goal as DBGoalType } from "@/db/schema";
 
 interface BoardData {
@@ -29,6 +29,8 @@ interface BoardsResponse {
     boards: number;
     photos: number;
   };
+  isAuthenticated: boolean;
+  isPaid: boolean;
 }
 
 function createAuthHeaders(visitorId: string | null): HeadersInit {
@@ -58,13 +60,15 @@ async function saveGoalToDatabase(
 
 export function useVisionBoard() {
   const queryClient = useQueryClient();
-  const { visitorId, isLoading: isLoadingFingerprint } = useFingerprint();
+  const { userId, visitorId, isLoading: isLoadingAuth, isAuthenticated, hasMigrated } = useAuth();
   const [boardData, setBoardData] = useState<BoardData | null>(null);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [step, setStep] = useState<"upload" | "goals" | "board">("upload");
 
-  const { data: boardsData, isLoading: isLoadingBoards } = useQuery<BoardsResponse>({
-    queryKey: ["boards", visitorId],
+  const queryKey = ["boards", userId || visitorId];
+
+  const { data: boardsData, isLoading: isLoadingBoards, refetch: refetchBoards } = useQuery<BoardsResponse>({
+    queryKey,
     queryFn: async () => {
       const res = await fetch("/api/boards", {
         headers: createAuthHeaders(visitorId),
@@ -72,7 +76,7 @@ export function useVisionBoard() {
       if (!res.ok) throw new Error("Failed to fetch boards");
       return res.json();
     },
-    enabled: !!visitorId,
+    enabled: !isLoadingAuth && (!!userId || !!visitorId),
   });
 
   const uploadMutation = useMutation({
@@ -82,7 +86,7 @@ export function useVisionBoard() {
     },
     onSuccess: () => {
       setStep("goals");
-      queryClient.invalidateQueries({ queryKey: ["boards", visitorId] });
+      queryClient.invalidateQueries({ queryKey });
     },
   });
 
@@ -138,7 +142,7 @@ export function useVisionBoard() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["boards", visitorId] });
+      queryClient.invalidateQueries({ queryKey });
     },
   });
 
@@ -152,7 +156,7 @@ export function useVisionBoard() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["boards", visitorId] });
+      queryClient.invalidateQueries({ queryKey });
     },
   });
 
@@ -179,7 +183,6 @@ export function useVisionBoard() {
 
     setStep("board");
 
-    const goalsToSave = goals.filter((g) => !g.generatedImageUrl && !g.id.startsWith("goal_"));
     const existingGoals = goals.filter((g) => g.generatedImageUrl || g.id.startsWith("goal_"));
     const newGoals = goals.filter((g) => !g.id.startsWith("goal_") && !g.generatedImageUrl);
 
@@ -262,8 +265,8 @@ export function useVisionBoard() {
       await Promise.all(batch.map(processGoal));
     }
 
-    queryClient.invalidateQueries({ queryKey: ["boards", visitorId] });
-  }, [boardData, goals, visitorId, generateImageMutation, generatePhraseMutation, queryClient]);
+    queryClient.invalidateQueries({ queryKey });
+  }, [boardData, goals, visitorId, generateImageMutation, generatePhraseMutation, queryClient, queryKey]);
 
   const regenerateGoalImage = useCallback(
     async (goalId: string) => {
@@ -302,14 +305,14 @@ export function useVisionBoard() {
           )
         );
 
-        queryClient.invalidateQueries({ queryKey: ["boards", visitorId] });
+        queryClient.invalidateQueries({ queryKey });
       } catch {
         setGoals((prev) =>
           prev.map((g) => (g.id === goalId ? { ...g, isGenerating: false } : g))
         );
       }
     },
-    [boardData, goals, generateImageMutation, generatePhraseMutation, queryClient, visitorId]
+    [boardData, goals, generateImageMutation, generatePhraseMutation, queryClient, queryKey]
   );
 
   const deleteGoal = useCallback(
@@ -339,7 +342,8 @@ export function useVisionBoard() {
   }, []);
 
   const createBoardWithExistingPhoto = useCallback(async () => {
-    if (!boardsData?.boards.length || !visitorId) return;
+    if (!boardsData?.boards.length) return;
+    if (!userId && !visitorId) return;
 
     const latestBoard = boardsData.boards[0];
 
@@ -362,8 +366,8 @@ export function useVisionBoard() {
     });
     setGoals([]);
     setStep("goals");
-    queryClient.invalidateQueries({ queryKey: ["boards", visitorId] });
-  }, [boardsData, visitorId, queryClient]);
+    queryClient.invalidateQueries({ queryKey });
+  }, [boardsData, userId, visitorId, queryClient, queryKey]);
 
   const savePositions = useCallback(
     async (positions: Array<{ id: string; x: number; y: number; width: number; height: number }>) => {
@@ -384,7 +388,10 @@ export function useVisionBoard() {
 
   return {
     visitorId,
-    isLoadingFingerprint,
+    userId,
+    isAuthenticated,
+    hasMigrated,
+    isLoadingAuth,
     isLoadingBoards,
     boardData,
     goals,
@@ -395,6 +402,7 @@ export function useVisionBoard() {
     existingBoards: boardsData?.boards ?? [],
     limits: boardsData?.limits,
     usage: boardsData?.usage,
+    isPaid: boardsData?.isPaid ?? false,
     onUploadComplete: uploadMutation.mutate,
     generateAllImages,
     regenerateGoalImage,
@@ -404,5 +412,6 @@ export function useVisionBoard() {
     resetToUpload,
     savePositions,
     createBoardWithExistingPhoto,
+    refetchBoards,
   };
 }
