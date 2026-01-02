@@ -436,10 +436,10 @@ export function useVisionBoard() {
     setStep("upload");
   }, []);
 
-  const createBoardWithExistingPhoto = useCallback(async () => {
+  const createBoardWithExistingPhoto = useCallback(async (): Promise<string | null> => {
     const profile = boardsData?.profile;
-    if (!profile?.avatarNoBgUrl) return;
-    if (!userId && !visitorId) return;
+    if (!profile?.avatarNoBgUrl) return null;
+    if (!userId && !visitorId) return null;
 
     const res = await fetch("/api/boards", {
       method: "POST",
@@ -461,6 +461,7 @@ export function useVisionBoard() {
     setGoals([]);
     setStep("gallery");
     queryClient.invalidateQueries({ queryKey });
+    return data.boardId;
   }, [boardsData, userId, visitorId, queryClient, queryKey]);
 
   const profile = boardsData?.profile;

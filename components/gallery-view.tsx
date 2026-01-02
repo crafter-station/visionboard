@@ -21,6 +21,9 @@ interface GalleryViewProps {
   isPro: boolean;
   checkoutUrl?: string | null;
   isAddingGoal?: boolean;
+  credits?: number;
+  maxPhotos?: number;
+  photosUsed?: number;
 }
 
 export function GalleryView({
@@ -35,6 +38,9 @@ export function GalleryView({
   isPro,
   checkoutUrl,
   isAddingGoal,
+  credits,
+  maxPhotos,
+  photosUsed,
 }: GalleryViewProps) {
   const [copied, setCopied] = useState(false);
   const [isAddingNew, setIsAddingNew] = useState(false);
@@ -67,10 +73,33 @@ export function GalleryView({
     goals.length > 0 &&
     goals.every((g) => g.generatedImageUrl && !g.isGenerating);
 
+  const getLimitsDisplay = () => {
+    if (isPro && credits !== undefined) {
+      return `${credits} credit${credits !== 1 ? "s" : ""} remaining`;
+    }
+    if (maxPhotos !== undefined && photosUsed !== undefined) {
+      const remaining = Math.max(0, maxPhotos - photosUsed);
+      if (remaining === 0) {
+        return isAuthenticated ? "Upgrade for more" : "Sign up for more";
+      }
+      return `${remaining}/${maxPhotos} free image${maxPhotos !== 1 ? "s" : ""}`;
+    }
+    return null;
+  };
+
+  const limitsDisplay = getLimitsDisplay();
+
   return (
     <div className="w-full space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Your Goals</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold">Your Goals</h2>
+          {limitsDisplay && (
+            <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">
+              {limitsDisplay}
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-3">
           {boardId && allGenerated && (
             <Button

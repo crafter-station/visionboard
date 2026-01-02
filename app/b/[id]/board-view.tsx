@@ -65,7 +65,7 @@ export function BoardView({ board }: BoardViewProps) {
   const [isPaid, setIsPaid] = useState(false);
   const [credits, setCredits] = useState(0);
   const [usage, setUsage] = useState({ photos: 0 });
-  const [maxPhotos, setMaxPhotos] = useState(3);
+  const [maxPhotos, setMaxPhotos] = useState(1);
 
   const isOwner =
     board.profile.userId === userId || board.profile.visitorId === visitorId;
@@ -458,6 +458,9 @@ export function BoardView({ board }: BoardViewProps) {
             isPro={isPaid}
             checkoutUrl={checkoutUrl}
             isAddingGoal={isAddingGoal}
+            credits={credits}
+            maxPhotos={maxPhotos}
+            photosUsed={usage.photos}
           />
 
           {isAtLimit && !isPaid && goals.length > 0 && (

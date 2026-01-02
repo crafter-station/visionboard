@@ -161,8 +161,10 @@ export default function DashboardPage() {
 
   const handleCreateBoard = async () => {
     if (!hasExistingPhoto) return;
-    await createBoardWithExistingPhoto();
-    refetchBoards();
+    const boardId = await createBoardWithExistingPhoto();
+    if (boardId) {
+      router.push(`/b/${boardId}`);
+    }
   };
 
   return (
@@ -241,7 +243,10 @@ export default function DashboardPage() {
               </div>
               <PhotoUpload
                 visitorId={visitorId}
-                onUploadComplete={onUploadComplete}
+                onUploadComplete={(data) => {
+                  onUploadComplete(data);
+                  router.push(`/b/${data.boardId}`);
+                }}
               />
             </div>
           </div>
