@@ -15,6 +15,10 @@ import { useVisionBoard } from "@/hooks/use-vision-board";
 import { LIMITS } from "@/lib/constants";
 import { Loader2, CheckCircle, X } from "lucide-react";
 
+const POLL_INTERVAL_MS = 1000;
+const FALLBACK_AFTER_MS = 12000;
+const MAX_POLL_TIME_MS = 30000;
+
 function CheckoutVerificationHandler({
   onVerified,
   setIsVerifying,
@@ -27,11 +31,57 @@ function CheckoutVerificationHandler({
   const [verificationStatus, setVerificationStatus] = useState<
     "idle" | "verifying" | "success" | "error"
   >("idle");
+  const [showCloseWhileVerifying, setShowCloseWhileVerifying] = useState(false);
   const verificationAttemptedRef = useRef(false);
+  const autoRedirectRef = useRef<NodeJS.Timeout | null>(null);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const startTimeRef = useRef<number>(0);
+
+  const cleanup = () => {
+    if (autoRedirectRef.current) {
+      clearTimeout(autoRedirectRef.current);
+      autoRedirectRef.current = null;
+    }
+    if (pollIntervalRef.current) {
+      clearTimeout(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+  };
 
   const handleContinue = () => {
+    cleanup();
     router.replace("/b");
   };
+
+  // Auto-redirect after success or error
+  useEffect(() => {
+    if (verificationStatus === "success") {
+      autoRedirectRef.current = setTimeout(() => {
+        router.replace("/b");
+      }, 1200);
+    } else if (verificationStatus === "error") {
+      autoRedirectRef.current = setTimeout(() => {
+        router.replace("/b");
+      }, 3000);
+    }
+
+    return () => {
+      if (autoRedirectRef.current) {
+        clearTimeout(autoRedirectRef.current);
+      }
+    };
+  }, [verificationStatus, router]);
+
+  // Show close button after 3 seconds even while verifying
+  useEffect(() => {
+    if (verificationStatus === "verifying") {
+      const timer = setTimeout(() => {
+        setShowCloseWhileVerifying(true);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+    setShowCloseWhileVerifying(false);
+  }, [verificationStatus]);
 
   useEffect(() => {
     const checkoutId = searchParams.get("checkout_id");
@@ -40,100 +90,157 @@ function CheckoutVerificationHandler({
     verificationAttemptedRef.current = true;
     setVerificationStatus("verifying");
     setIsVerifying(true);
+    startTimeRef.current = Date.now();
+    const since = new Date().toISOString();
 
-    const verifyCheckout = async () => {
+    const poll = async () => {
+      const elapsed = Date.now() - startTimeRef.current;
+      const useFallback = elapsed >= FALLBACK_AFTER_MS;
+
       try {
-        const res = await fetch(`/api/polar/verify?checkout_id=${checkoutId}`);
+        const url = new URL(`/api/polar/verify`, window.location.origin);
+        url.searchParams.set("checkout_id", checkoutId);
+        url.searchParams.set("since", since);
+        if (useFallback) {
+          url.searchParams.set("fallback", "1");
+        }
+
+        const res = await fetch(url.toString());
         const data = await res.json();
 
         if (data.verified) {
+          cleanup();
           setVerificationStatus("success");
           onVerified();
-        } else {
+          setIsVerifying(false);
+          return;
+        }
+
+        // If we've exceeded max poll time, show error state but still indicate success may come
+        if (elapsed >= MAX_POLL_TIME_MS) {
+          cleanup();
           setVerificationStatus("error");
           onVerified();
+          setIsVerifying(false);
+          return;
         }
+
+        // Continue polling
+        pollIntervalRef.current = setTimeout(poll, POLL_INTERVAL_MS);
       } catch {
-        setVerificationStatus("error");
-        onVerified();
-      } finally {
-        setIsVerifying(false);
+        // On network error, continue polling unless we've exceeded max time
+        const elapsed = Date.now() - startTimeRef.current;
+        if (elapsed >= MAX_POLL_TIME_MS) {
+          cleanup();
+          setVerificationStatus("error");
+          onVerified();
+          setIsVerifying(false);
+          return;
+        }
+        pollIntervalRef.current = setTimeout(poll, POLL_INTERVAL_MS);
       }
     };
 
-    verifyCheckout();
+    poll();
+
+    return cleanup;
   }, [searchParams, onVerified, setIsVerifying]);
 
   if (verificationStatus === "idle") return null;
 
+  const canClose = verificationStatus !== "verifying" || showCloseWhileVerifying;
+
   return (
-    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 safe-area-inset pointer-events-none">
-      <div className="bg-card border rounded-lg p-6 sm:p-8 max-w-sm w-full text-center space-y-4 shadow-lg relative z-10 pointer-events-auto">
-        {verificationStatus === "verifying" && (
-          <>
-            <Loader2 className="size-12 animate-spin mx-auto text-primary" />
-            <div>
-              <h3 className="font-semibold text-lg">Verifying Payment</h3>
-              <p className="text-sm text-muted-foreground">Please wait...</p>
-            </div>
-          </>
-        )}
-        {verificationStatus === "success" && (
-          <>
-            <button
-              type="button"
-              onClick={handleContinue}
-              className="absolute top-3 right-3 p-2 rounded-full hover:bg-muted transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation"
-              aria-label="Close"
-            >
-              <X className="size-5" />
-            </button>
-            <CheckCircle className="size-12 mx-auto text-green-500" />
-            <div>
-              <h3 className="font-semibold text-lg">Payment Successful</h3>
-              <p className="text-sm text-muted-foreground">
-                Your credits have been added!
-              </p>
-            </div>
-            <Button
-              type="button"
-              onClick={handleContinue}
-              className="w-full min-h-[44px] touch-manipulation"
-            >
-              Continue
-            </Button>
-          </>
-        )}
-        {verificationStatus === "error" && (
-          <>
-            <button
-              type="button"
-              onClick={handleContinue}
-              className="absolute top-3 right-3 p-2 rounded-full hover:bg-muted transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation"
-              aria-label="Close"
-            >
-              <X className="size-5" />
-            </button>
-            <div className="size-12 mx-auto rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
-              <span className="text-2xl text-yellow-600 dark:text-yellow-500">
-                !
-              </span>
-            </div>
-            <div>
-              <h3 className="font-semibold text-lg">Processing Payment</h3>
-              <p className="text-sm text-muted-foreground">
-                Your payment is being processed. Credits will appear shortly.
-              </p>
-            </div>
-            <Button
-              type="button"
-              onClick={handleContinue}
-              className="w-full min-h-[44px] touch-manipulation"
-            >
-              Continue
-            </Button>
-          </>
-        )}
+    <div className="fixed inset-0 z-[100] safe-area-inset">
+      {/* Backdrop layer - separate from content to avoid Safari backdrop-filter click issues */}
+      <div
+        className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+        onClick={canClose ? handleContinue : undefined}
+        aria-hidden="true"
+      />
+
+      {/* Content layer - positioned independently */}
+      <div className="relative z-10 flex items-center justify-center min-h-full p-4 pointer-events-none">
+        <div
+          className="relative bg-card border rounded-lg p-6 sm:p-8 max-w-sm w-full text-center space-y-4 shadow-lg pointer-events-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {verificationStatus === "verifying" && (
+            <>
+              {showCloseWhileVerifying && (
+                <button
+                  type="button"
+                  onClick={handleContinue}
+                  className="absolute top-3 right-3 p-2 rounded-full hover:bg-muted transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation"
+                  aria-label="Close"
+                >
+                  <X className="size-5" />
+                </button>
+              )}
+              <Loader2 className="size-12 animate-spin mx-auto text-primary" />
+              <div>
+                <h3 className="font-semibold text-lg">Verifying Payment</h3>
+                <p className="text-sm text-muted-foreground">Please wait...</p>
+              </div>
+            </>
+          )}
+          {verificationStatus === "success" && (
+            <>
+              <button
+                type="button"
+                onClick={handleContinue}
+                className="absolute top-3 right-3 p-2 rounded-full hover:bg-muted transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation"
+                aria-label="Close"
+              >
+                <X className="size-5" />
+              </button>
+              <CheckCircle className="size-12 mx-auto text-green-500" />
+              <div>
+                <h3 className="font-semibold text-lg">Payment Successful</h3>
+                <p className="text-sm text-muted-foreground">
+                  Your credits have been added!
+                </p>
+              </div>
+              <Button
+                type="button"
+                onClick={handleContinue}
+                className="w-full min-h-[44px] touch-manipulation"
+              >
+                Continue
+              </Button>
+            </>
+          )}
+          {verificationStatus === "error" && (
+            <>
+              <button
+                type="button"
+                onClick={handleContinue}
+                className="absolute top-3 right-3 p-2 rounded-full hover:bg-muted transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation"
+                aria-label="Close"
+              >
+                <X className="size-5" />
+              </button>
+              <div className="size-12 mx-auto rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
+                <span className="text-2xl text-yellow-600 dark:text-yellow-500">
+                  !
+                </span>
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">Processing Payment</h3>
+                <p className="text-sm text-muted-foreground">
+                  Your payment is being processed. Credits will appear shortly.
+                </p>
+              </div>
+              <Button
+                type="button"
+                onClick={handleContinue}
+                className="w-full min-h-[44px] touch-manipulation"
+              >
+                Continue
+              </Button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
