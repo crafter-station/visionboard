@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, gte, and } from "drizzle-orm";
 import { db } from "..";
 import { userCredits, purchases } from "../schema";
 import { nanoid } from "nanoid";
@@ -25,12 +25,6 @@ export async function getCreditsForProfile(profileId: string): Promise<number> {
 export async function getCreditsRecordForProfile(profileId: string) {
   return db.query.userCredits.findFirst({
     where: eq(userCredits.profileId, profileId),
-  });
-}
-
-export async function getPurchaseByOrderId(polarOrderId: string) {
-  return db.query.purchases.findFirst({
-    where: eq(purchases.polarOrderId, polarOrderId),
   });
 }
 
@@ -108,5 +102,27 @@ export async function addCredit(profileId: string): Promise<void> {
       updatedAt: new Date(),
     })
     .where(eq(userCredits.profileId, profileId));
+}
+
+export async function hasPurchaseSince(
+  profileId: string,
+  since: Date,
+): Promise<{ hasPurchase: boolean; credits: number }> {
+  const recentPurchase = await db.query.purchases.findFirst({
+    where: and(
+      eq(purchases.profileId, profileId),
+      gte(purchases.createdAt, since),
+    ),
+  });
+
+  const credits = await getCreditsForProfile(profileId);
+  return { hasPurchase: !!recentPurchase, credits };
+}
+
+export async function getLatestPurchaseForProfile(profileId: string) {
+  return db.query.purchases.findFirst({
+    where: eq(purchases.profileId, profileId),
+    orderBy: (purchases, { desc }) => [desc(purchases.createdAt)],
+  });
 }
 
