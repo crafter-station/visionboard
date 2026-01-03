@@ -7,7 +7,7 @@ import {
   getOrCreateProfile,
   getCreditsForProfile,
   getUserLimits,
-  getPurchaseByOrderId,
+  hasPurchaseSince,
 } from "@/db/queries";
 
 const polar = new Polar({
@@ -17,6 +17,8 @@ const polar = new Polar({
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const checkoutId = searchParams.get("checkout_id");
+  const sinceParam = searchParams.get("since");
+  const useFallback = searchParams.get("fallback") === "1";
 
   if (!checkoutId) {
     return NextResponse.json({ error: "Missing checkout_id" }, { status: 400 });
@@ -29,29 +31,46 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Fast path: check if webhook already processed this payment
-    const existingPurchase = await getPurchaseByOrderId(checkoutId);
-    if (existingPurchase) {
-      const credits = await getCreditsForProfile(existingPurchase.profileId);
-      const limits = getUserLimits(credits);
-      return NextResponse.json({
-        verified: true,
-        credits,
-        isPaid: limits.isPaid,
-        maxPhotos: limits.maxPhotos,
-        maxBoards: limits.maxBoards,
-      });
+    const profile = await getOrCreateProfile({ userId });
+
+    // DB-first: check if webhook has already processed the payment
+    if (sinceParam) {
+      const since = new Date(sinceParam);
+      const { hasPurchase, credits } = await hasPurchaseSince(profile.id, since);
+
+      if (hasPurchase) {
+        const limits = getUserLimits(credits);
+        return NextResponse.json({
+          verified: true,
+          credits,
+          isPaid: limits.isPaid,
+          maxPhotos: limits.maxPhotos,
+          maxBoards: limits.maxBoards,
+        });
+      }
+
+      // No recent purchase found yet - if not using fallback, return pending
+      if (!useFallback) {
+        const currentCredits = await getCreditsForProfile(profile.id);
+        return NextResponse.json({
+          verified: false,
+          status: "pending",
+          credits: currentCredits,
+          isPaid: currentCredits > 0,
+        });
+      }
     }
 
-    // Slow path: webhook hasn't processed yet, verify with Polar API
+    // Fallback: call Polar API directly
     const checkout = await polar.checkouts.get({ id: checkoutId });
 
     if (checkout.status !== "succeeded") {
+      const currentCredits = await getCreditsForProfile(profile.id);
       return NextResponse.json({
         verified: false,
         status: checkout.status,
-        credits: 0,
-        isPaid: false,
+        credits: currentCredits,
+        isPaid: currentCredits > 0,
       });
     }
 
@@ -63,12 +82,13 @@ export async function GET(request: Request) {
       );
     }
 
-    const profile = await getOrCreateProfile({ userId });
+    // Use the order ID from the checkout for idempotent addCredits (matches webhook)
+    const orderId = (checkout as any).order?.id ?? checkoutId;
 
     await addCredits(
       profile.id,
       LIMITS.PAID_CREDITS_PER_PURCHASE,
-      checkoutId,
+      orderId,
       checkout.customerId ?? undefined,
     );
 
@@ -84,9 +104,21 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("Error verifying checkout:", error);
-    return NextResponse.json(
-      { error: "Failed to verify checkout" },
-      { status: 500 },
-    );
+    // On error, still return current credits state
+    try {
+      const profile = await getOrCreateProfile({ userId });
+      const credits = await getCreditsForProfile(profile.id);
+      return NextResponse.json({
+        verified: false,
+        status: "error",
+        credits,
+        isPaid: credits > 0,
+      });
+    } catch {
+      return NextResponse.json(
+        { error: "Failed to verify checkout" },
+        { status: 500 },
+      );
+    }
   }
 }
