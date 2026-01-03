@@ -151,20 +151,19 @@ function CheckoutVerificationHandler({
   const canClose = verificationStatus !== "verifying" || showCloseWhileVerifying;
 
   return (
-    <div className="fixed inset-0 z-[100] safe-area-inset">
-      {/* Backdrop layer - separate from content to avoid Safari backdrop-filter click issues */}
+    <div className="fixed inset-0 z-[100] safe-area-inset flex items-center justify-center p-4">
+      {/* Backdrop layer - no backdrop-blur to avoid Safari click issues */}
       <div
-        className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+        className="absolute inset-0 bg-background/80 -z-10"
         onClick={canClose ? handleContinue : undefined}
         aria-hidden="true"
       />
 
       {/* Content layer - positioned independently */}
-      <div className="relative z-10 flex items-center justify-center min-h-full p-4 pointer-events-none">
-        <div
-          className="relative bg-card border rounded-lg p-6 sm:p-8 max-w-sm w-full text-center space-y-4 shadow-lg pointer-events-auto"
-          onClick={(e) => e.stopPropagation()}
-        >
+      <div
+        className="relative bg-card border rounded-lg p-6 sm:p-8 max-w-sm w-full text-center space-y-4 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
           {verificationStatus === "verifying" && (
             <>
               {showCloseWhileVerifying && (
@@ -189,10 +188,11 @@ function CheckoutVerificationHandler({
               <button
                 type="button"
                 onClick={handleContinue}
-                className="absolute top-3 right-3 p-2 rounded-full hover:bg-muted transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation"
+                className="absolute top-3 right-3 p-2 rounded-full hover:bg-muted transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation z-50 cursor-pointer"
                 aria-label="Close"
+                style={{ pointerEvents: "auto" }}
               >
-                <X className="size-5" />
+                <X className="size-5 pointer-events-none" />
               </button>
               <CheckCircle className="size-12 mx-auto text-green-500" />
               <div>
@@ -204,7 +204,8 @@ function CheckoutVerificationHandler({
               <Button
                 type="button"
                 onClick={handleContinue}
-                className="w-full min-h-[44px] touch-manipulation"
+                className="w-full min-h-[44px] touch-manipulation cursor-pointer z-50 relative"
+                style={{ pointerEvents: "auto" }}
               >
                 Continue
               </Button>
@@ -215,10 +216,11 @@ function CheckoutVerificationHandler({
               <button
                 type="button"
                 onClick={handleContinue}
-                className="absolute top-3 right-3 p-2 rounded-full hover:bg-muted transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation"
+                className="absolute top-3 right-3 p-2 rounded-full hover:bg-muted transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation z-50 cursor-pointer"
                 aria-label="Close"
+                style={{ pointerEvents: "auto" }}
               >
-                <X className="size-5" />
+                <X className="size-5 pointer-events-none" />
               </button>
               <div className="size-12 mx-auto rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
                 <span className="text-2xl text-yellow-600 dark:text-yellow-500">
@@ -234,14 +236,14 @@ function CheckoutVerificationHandler({
               <Button
                 type="button"
                 onClick={handleContinue}
-                className="w-full min-h-[44px] touch-manipulation"
+                className="w-full min-h-[44px] touch-manipulation cursor-pointer z-50 relative"
+                style={{ pointerEvents: "auto" }}
               >
                 Continue
               </Button>
             </>
           )}
         </div>
-      </div>
     </div>
   );
 }
