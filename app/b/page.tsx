@@ -48,20 +48,35 @@ function CheckoutVerificationHandler({
     }
   };
 
-  const handleContinue = () => {
+  const handleContinue = (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
     cleanup();
-    router.replace("/b");
+    // Force navigation by removing checkout_id from URL
+    const url = new URL(window.location.href);
+    url.searchParams.delete("checkout_id");
+    url.searchParams.delete("checkoutId");
+    url.searchParams.delete("customer_session_token");
+    router.replace(url.pathname + url.search);
   };
 
   // Auto-redirect after success or error
   useEffect(() => {
     if (verificationStatus === "success") {
       autoRedirectRef.current = setTimeout(() => {
-        router.replace("/b");
+        const url = new URL(window.location.href);
+        url.searchParams.delete("checkout_id");
+        url.searchParams.delete("checkoutId");
+        url.searchParams.delete("customer_session_token");
+        router.replace(url.pathname + url.search);
       }, 1200);
     } else if (verificationStatus === "error") {
       autoRedirectRef.current = setTimeout(() => {
-        router.replace("/b");
+        const url = new URL(window.location.href);
+        url.searchParams.delete("checkout_id");
+        url.searchParams.delete("checkoutId");
+        url.searchParams.delete("customer_session_token");
+        router.replace(url.pathname + url.search);
       }, 3000);
     }
 
@@ -146,23 +161,42 @@ function CheckoutVerificationHandler({
     return cleanup;
   }, [searchParams, onVerified, setIsVerifying]);
 
+  // Check if checkout_id is still in URL - if not, don't render
+  const checkoutId = searchParams.get("checkout_id");
+  if (!checkoutId && verificationStatus === "idle") return null;
+  
+  // If checkout_id was removed but we're still mounted, hide the modal
+  if (!checkoutId && verificationStatus !== "idle") {
+    return null;
+  }
+
   if (verificationStatus === "idle") return null;
 
   const canClose = verificationStatus !== "verifying" || showCloseWhileVerifying;
 
   return (
-    <div className="fixed inset-0 z-[100] safe-area-inset flex items-center justify-center p-4">
-      {/* Backdrop layer - no backdrop-blur to avoid Safari click issues */}
+    <div 
+      className="fixed inset-0 z-[100] safe-area-inset flex items-center justify-center p-4"
+      onClick={(e) => {
+        if (canClose && e.target === e.currentTarget) {
+          handleContinue(e);
+        }
+      }}
+    >
+      {/* Backdrop layer - completely non-interactive */}
       <div
-        className="absolute inset-0 bg-background/80 -z-10"
-        onClick={canClose ? handleContinue : undefined}
+        className="absolute inset-0 bg-background/80"
+        style={{ pointerEvents: "none" }}
         aria-hidden="true"
       />
 
-      {/* Content layer - positioned independently */}
+      {/* Content layer - fully interactive */}
       <div
         className="relative bg-card border rounded-lg p-6 sm:p-8 max-w-sm w-full text-center space-y-4 shadow-lg"
         onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
+        style={{ pointerEvents: "auto" }}
       >
           {verificationStatus === "verifying" && (
             <>
@@ -187,12 +221,15 @@ function CheckoutVerificationHandler({
             <>
               <button
                 type="button"
-                onClick={handleContinue}
-                className="absolute top-3 right-3 p-2 rounded-full hover:bg-muted transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation z-50 cursor-pointer"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleContinue(e);
+                }}
+                className="absolute top-3 right-3 p-2 rounded-full hover:bg-muted transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation cursor-pointer"
                 aria-label="Close"
-                style={{ pointerEvents: "auto" }}
               >
-                <X className="size-5 pointer-events-none" />
+                <X className="size-5" />
               </button>
               <CheckCircle className="size-12 mx-auto text-green-500" />
               <div>
@@ -203,9 +240,12 @@ function CheckoutVerificationHandler({
               </div>
               <Button
                 type="button"
-                onClick={handleContinue}
-                className="w-full min-h-[44px] touch-manipulation cursor-pointer z-50 relative"
-                style={{ pointerEvents: "auto" }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleContinue(e);
+                }}
+                className="w-full min-h-[44px] touch-manipulation cursor-pointer"
               >
                 Continue
               </Button>
@@ -215,12 +255,15 @@ function CheckoutVerificationHandler({
             <>
               <button
                 type="button"
-                onClick={handleContinue}
-                className="absolute top-3 right-3 p-2 rounded-full hover:bg-muted transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation z-50 cursor-pointer"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleContinue(e);
+                }}
+                className="absolute top-3 right-3 p-2 rounded-full hover:bg-muted transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation cursor-pointer"
                 aria-label="Close"
-                style={{ pointerEvents: "auto" }}
               >
-                <X className="size-5 pointer-events-none" />
+                <X className="size-5" />
               </button>
               <div className="size-12 mx-auto rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
                 <span className="text-2xl text-yellow-600 dark:text-yellow-500">
@@ -235,9 +278,12 @@ function CheckoutVerificationHandler({
               </div>
               <Button
                 type="button"
-                onClick={handleContinue}
-                className="w-full min-h-[44px] touch-manipulation cursor-pointer z-50 relative"
-                style={{ pointerEvents: "auto" }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleContinue(e);
+                }}
+                className="w-full min-h-[44px] touch-manipulation cursor-pointer"
               >
                 Continue
               </Button>
