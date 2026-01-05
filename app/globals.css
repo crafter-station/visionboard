@@ -178,3 +178,21 @@
       border-box;
   border: 1px solid transparent;
 }
+
+/* Dotted grid background for collage effect */
+.bg-dotted-grid {
+  background-image: radial-gradient(
+    circle,
+    oklch(0 0 0 / 8%) 1px,
+    transparent 1px
+  );
+  background-size: 24px 24px;
+}
+
+.dark .bg-dotted-grid {
+  background-image: radial-gradient(
+    circle,
+    oklch(1 0 0 / 10%) 1px,
+    transparent 1px
+  );
+}
