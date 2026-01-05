@@ -38,6 +38,7 @@ export async function validateRequest(
   success: boolean;
   userId: string | null;
   identifier: UserIdentifier | null;
+  isPaid: boolean;
   error?: string;
   remaining?: number;
 }> {
@@ -48,19 +49,30 @@ export async function validateRequest(
       success: false,
       userId: null,
       identifier: null,
+      isPaid: false,
       error: "Authentication required",
     };
   }
 
   const identifier: UserIdentifier = { userId };
 
-  const { success, remaining } = await checkRateLimit(userId, rateLimitType);
+  // Check if user is paid for more generous rate limits
+  const profile = await getProfileByIdentifier(identifier);
+  const credits = profile ? await getCreditsForProfile(profile.id) : 0;
+  const isPaid = credits > 0;
+
+  const { success, remaining } = await checkRateLimit(
+    userId,
+    rateLimitType,
+    isPaid,
+  );
 
   if (!success) {
     return {
       success: false,
       userId,
       identifier,
+      isPaid,
       error: "Rate limit exceeded. Please try again later.",
       remaining,
     };
@@ -70,6 +82,7 @@ export async function validateRequest(
     success: true,
     userId,
     identifier,
+    isPaid,
     remaining,
   };
 }
