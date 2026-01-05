@@ -15,6 +15,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { LIMITS } from "@/lib/constants";
 import type { Goal as GoalType } from "@/components/goal-input";
 import { ArrowLeft, Loader2 } from "lucide-react";
+import { EditableAvatar } from "@/components/editable-avatar";
+import { generateGoalId } from "@/lib/id";
 
 interface BoardData {
   id: string;
@@ -61,7 +63,9 @@ export function BoardView({ board }: BoardViewProps) {
   const [freeImagesUsed, setFreeImagesUsed] = useState(0);
 
   const isOwner = isAuthenticated && board.profile.userId === userId;
-  const userPhotoUrl = board.profile.avatarNoBgUrl ?? undefined;
+  const [userPhotoUrl, setUserPhotoUrl] = useState<string | undefined>(
+    board.profile.avatarNoBgUrl ?? undefined,
+  );
 
   useEffect(() => {
     setGoals(
@@ -165,9 +169,21 @@ export function BoardView({ board }: BoardViewProps) {
       if (!userPhotoUrl) return;
 
       setIsAddingGoal(true);
-      let goalId: string | null = null;
+
+      // Optimistic: Add goal to UI immediately with temp ID
+      const tempId = `temp-${generateGoalId()}`;
+      const optimisticGoal: GoalType = {
+        id: tempId,
+        title,
+        isGenerating: true,
+        status: "pending",
+      };
+      setGoals((prev) => [...prev, optimisticGoal]);
+
+      let realGoalId: string | null = null;
 
       try {
+        // Create goal in database
         const goalRes = await fetch("/api/goals", {
           method: "POST",
           headers: defaultHeaders,
@@ -175,16 +191,14 @@ export function BoardView({ board }: BoardViewProps) {
         });
         if (!goalRes.ok) throw new Error("Failed to create goal");
         const dbGoal = await goalRes.json();
-        goalId = dbGoal.id;
+        realGoalId = dbGoal.id;
 
-        const newGoal: GoalType = {
-          id: dbGoal.id,
-          title,
-          isGenerating: true,
-          status: "pending",
-        };
-        setGoals((prev) => [...prev, newGoal]);
+        // Update temp ID to real ID
+        setGoals((prev) =>
+          prev.map((g) => (g.id === tempId ? { ...g, id: dbGoal.id } : g)),
+        );
 
+        // Generate image and phrase in parallel
         const [imageResult, phraseResult] = await Promise.all([
           fetch("/api/generate-image", {
             method: "POST",
@@ -220,22 +234,29 @@ export function BoardView({ board }: BoardViewProps) {
           setCredits(imageResult.credits);
         }
 
-        // Re-fetch actual freeImagesUsed from server after successful generation
         const creditsRes = await fetch("/api/polar/credits");
         if (creditsRes.ok) {
           const data = await creditsRes.json();
           setFreeImagesUsed(data.freeImagesUsed ?? 0);
         }
       } catch {
-        if (goalId) {
-          setGoals((prev) =>
-            prev.map((g) =>
-              g.id === goalId
+        // Remove optimistic goal or mark as failed
+        setGoals((prev) => {
+          const goalToUpdate = prev.find(
+            (g) => g.id === tempId || g.id === realGoalId,
+          );
+          if (!goalToUpdate) return prev;
+
+          // If we have a real ID, mark as failed; otherwise remove the temp goal
+          if (realGoalId) {
+            return prev.map((g) =>
+              g.id === realGoalId
                 ? { ...g, isGenerating: false, status: "failed" as const }
                 : g,
-            ),
-          );
-        }
+            );
+          }
+          return prev.filter((g) => g.id !== tempId);
+        });
       } finally {
         setIsAddingGoal(false);
       }
@@ -277,7 +298,7 @@ export function BoardView({ board }: BoardViewProps) {
   // Public view for non-owners
   if (!isOwner) {
     return (
-      <main className="min-h-screen bg-background flex flex-col">
+      <main className="min-h-screen bg-background bg-dotted-grid flex flex-col">
         <header className="border-b sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50">
           <div className="container mx-auto px-4 py-6">
             <div className="flex items-center justify-between">
@@ -309,20 +330,17 @@ export function BoardView({ board }: BoardViewProps) {
 
   // Owner view with editing capabilities
   return (
-    <main className="min-h-screen bg-background flex flex-col">
+    <main className="min-h-screen bg-background bg-dotted-grid flex flex-col">
       <header className="border-b sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50">
         <div className="container mx-auto px-3 py-3 sm:px-4 sm:py-4">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-              {userPhotoUrl && (
-                <div className="size-8 sm:size-12 rounded-full overflow-hidden border-2 border-foreground bg-muted flex-shrink-0">
-                  <img
-                    src={userPhotoUrl}
-                    alt="Your photo"
-                    className="w-full h-full object-cover object-top"
-                  />
-                </div>
-              )}
+              <EditableAvatar
+                src={userPhotoUrl}
+                onAvatarChange={setUserPhotoUrl}
+                editable={isOwner}
+                size="md"
+              />
               <div className="min-w-0">
                 <h1 className="text-base sm:text-xl font-bold tracking-tight truncate">
                   Vision Board
