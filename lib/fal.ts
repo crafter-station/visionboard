@@ -72,17 +72,13 @@ export async function generateImageWithUser(
     return `https://picsum.photos/seed/${seed}/1024/1024`;
   }
 
-  const stream = await fal.stream("fal-ai/gpt-image-1.5/edit", {
+  //  const result = await fal.subscribe("fal-ai/qwen-image-edit-2511/lora", {
+  const result = await fal.subscribe("fal-ai/flux-2-pro/edit", {
     input: {
-      prompt: `8-bit pixel-art scene showing this person ${goalPrompt}. Full scene with environment and context that represents achieving this goal. The person is happy, confident, and actively living their dream. Include relevant props, setting, and atmosphere. Style: cartoonish, anime inspired, vibrant colors, cute and tender`,
+      prompt: `8-bit pixel-art scene showing this person ${goalPrompt}. Full scene with environment and context that represents achieving this goal. The person is happy, confident, and actively living their dream. Include relevant props, setting, and atmosphere. Style:  realistic proportions, anime inspired, vibrant colors, cute and tender, IMPORTANT: make sure head and body are properly proportioned and aligned with the rest of the body.`,
       image_urls: [userImageUrl],
     },
   });
 
-  for await (const event of stream) {
-    console.log(event);
-  }
-
-  const result = await stream.done();
-  return result.images[0].url;
+  return result.data.images[0].url;
 }
