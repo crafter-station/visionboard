@@ -355,7 +355,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <main className="min-h-screen bg-background flex flex-col">
+    <main className="min-h-screen bg-background bg-dotted-grid flex flex-col">
       <Suspense fallback={null}>
         <CheckoutVerificationHandler
           onVerified={refetchBoards}
