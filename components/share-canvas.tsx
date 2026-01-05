@@ -5,8 +5,8 @@ import { useTheme } from "next-themes";
 import { ImageCard } from "@/components/image-card";
 import type { VisionBoard, Goal } from "@/db/schema";
 
-const LEFT_ROTATION = { min: -8, max: -3 };
-const RIGHT_ROTATION = { min: 3, max: 8 };
+const LEFT_ROTATION = { min: -12, max: -4 };
+const RIGHT_ROTATION = { min: 4, max: 12 };
 
 function generateSeededRandom(seed: string): number {
   let hash = 0;
@@ -63,7 +63,7 @@ export function ShareCanvas({ board }: ShareCanvasProps) {
   const isDark = mounted && resolvedTheme === "dark";
 
   return (
-    <div className="relative min-h-[500px] rounded-lg overflow-hidden p-8">
+    <div className="relative min-h-[500px] rounded-lg overflow-hidden p-4 sm:p-8">
       <div
         className="absolute inset-0 -z-10"
         style={{
@@ -73,22 +73,23 @@ export function ShareCanvas({ board }: ShareCanvasProps) {
           filter: isDark ? "invert(1) hue-rotate(180deg)" : undefined,
         }}
       />
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-12 max-w-3xl mx-auto">
+      <div className="flex flex-wrap items-start justify-center gap-6 sm:gap-8 max-w-5xl mx-auto">
         {goalsWithImages.map((goal, index) => {
           const rotation = rotations[goal.id] ?? 0;
           return (
             <div
               key={goal.id}
-              className="transition-transform hover:scale-105"
+              className="w-full sm:w-[280px] md:w-[320px]"
               style={{
-                aspectRatio: "1618 / 2001",
-                transform: `rotate(${rotation}deg)`,
+                aspectRatio: "3 / 4",
               }}
             >
               <ImageCard
+                id={goal.id}
                 imageUrl={goal.generatedImageUrl ?? undefined}
                 phrase={goal.phrase ?? undefined}
                 title={goal.title}
+                rotation={rotation}
               />
             </div>
           );

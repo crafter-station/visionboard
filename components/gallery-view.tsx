@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import {
   Check,
   Download,
+  FileDown,
   Link,
   Loader2,
   Plus,
@@ -13,6 +14,7 @@ import {
 import { downloadImageWithFrame } from "@/lib/download-image";
 import { SignUpButton } from "@clerk/nextjs";
 import { ImageCard } from "@/components/image-card";
+import { PDFExportDialog } from "@/components/pdf-export-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,6 +26,27 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { Goal } from "@/components/goal-input";
+
+const LEFT_ROTATION = { min: -8, max: -2 };
+const RIGHT_ROTATION = { min: 2, max: 8 };
+
+function generateSeededRandom(seed: string): number {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    const char = seed.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash % 10000) / 10000;
+}
+
+function getAlternatingRotation(id: string, index: number): number {
+  const isLeft = index % 2 === 0;
+  const config = isLeft ? LEFT_ROTATION : RIGHT_ROTATION;
+  const range = config.max - config.min;
+  const random = generateSeededRandom(id);
+  return config.min + random * range;
+}
 
 interface GalleryViewProps {
   boardId?: string;
@@ -65,6 +88,14 @@ export function GalleryView({
 
   const reversedGoals = useMemo(() => [...goals].reverse(), [goals]);
 
+  const rotations = useMemo(() => {
+    const map: Record<string, number> = {};
+    reversedGoals.forEach((goal, index) => {
+      map[goal.id] = getAlternatingRotation(goal.id, index);
+    });
+    return map;
+  }, [reversedGoals]);
+
   const handleShare = async () => {
     if (!boardId) return;
     const url = `${window.location.origin}/b/${boardId}`;
@@ -103,6 +134,7 @@ export function GalleryView({
         imageUrl,
         phrase || "",
         `vision-board-${sanitizedTitle}`,
+        goalId,
       );
     } catch (error) {
       console.error("Failed to download image:", error);
@@ -114,6 +146,8 @@ export function GalleryView({
   const allGenerated =
     goals.length > 0 &&
     goals.every((g) => g.generatedImageUrl && !g.isGenerating);
+
+  const hasAnyCompletedImages = goals.some((g) => g.generatedImageUrl && !g.isGenerating);
 
   const getLimitsDisplay = () => {
     if (isPro && credits !== undefined) {
@@ -142,8 +176,19 @@ export function GalleryView({
             </span>
           )}
         </div>
-        <div className="flex items-center gap-3">
-          {boardId && allGenerated && (
+        <div className="flex items-center gap-2">
+          {boardId && hasAnyCompletedImages && (
+            <PDFExportDialog
+              goals={goals}
+              trigger={
+                <Button variant="outline" size="sm" className="gap-2">
+                  <FileDown className="size-4" />
+                  <span className="hidden sm:inline">PDF</span>
+                </Button>
+              }
+            />
+          )}
+          {boardId && allGenerated && goals.length > 0 && (
             <Button
               variant="outline"
               size="sm"
@@ -153,12 +198,12 @@ export function GalleryView({
               {copied ? (
                 <>
                   <Check className="size-4" />
-                  Copied
+                  <span className="hidden sm:inline">Copied</span>
                 </>
               ) : (
                 <>
                   <Link className="size-4" />
-                  Share
+                  <span className="hidden sm:inline">Share</span>
                 </>
               )}
             </Button>
@@ -170,7 +215,7 @@ export function GalleryView({
         {canAddMore && (
           <div
             className="relative border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer hover:border-foreground/50 hover:bg-accent/50 transition-colors"
-            style={{ aspectRatio: "1618 / 2001" }}
+            style={{ aspectRatio: "3 / 4" }}
             onClick={!isAddingNew ? handleAddCardClick : undefined}
           >
             {isAddingNew ? (
@@ -228,7 +273,7 @@ export function GalleryView({
           <SignUpButton mode="modal">
             <div
               className="relative border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer hover:border-foreground/50 hover:bg-accent/50 transition-colors"
-              style={{ aspectRatio: "1618 / 2001" }}
+              style={{ aspectRatio: "3 / 4" }}
             >
               <div className="flex flex-col items-center gap-2 p-4 text-center">
                 <div className="size-12 rounded-full bg-muted flex items-center justify-center">
@@ -246,7 +291,7 @@ export function GalleryView({
           <a
             href={checkoutUrl}
             className="relative border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer hover:border-foreground/50 hover:bg-accent/50 transition-colors"
-            style={{ aspectRatio: "1618 / 2001" }}
+            style={{ aspectRatio: "3 / 4" }}
           >
             <div className="flex flex-col items-center gap-2 p-4 text-center">
               <div className="size-12 rounded-full bg-muted flex items-center justify-center">
@@ -259,18 +304,22 @@ export function GalleryView({
           </a>
         )}
 
-        {reversedGoals.map((goal) => (
-          <div
-            key={goal.id}
-            className="relative group"
-            style={{ aspectRatio: "1618 / 2001" }}
-          >
-            <ImageCard
-              imageUrl={goal.generatedImageUrl}
-              phrase={goal.phrase}
-              isLoading={goal.isGenerating}
-              title={goal.title}
-            />
+        {reversedGoals.map((goal, index) => {
+          const rotation = rotations[goal.id] ?? 0;
+          return (
+            <div
+              key={goal.id}
+              className="relative group"
+              style={{ aspectRatio: "3 / 4" }}
+            >
+              <ImageCard
+                id={goal.id}
+                imageUrl={goal.generatedImageUrl}
+                phrase={goal.phrase}
+                isLoading={goal.isGenerating}
+                title={goal.title}
+                rotation={rotation}
+              />
             {goal.generatedImageUrl && !goal.isGenerating && (
               <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                 <Button
@@ -308,7 +357,8 @@ export function GalleryView({
               </div>
             )}
           </div>
-        ))}
+        );
+        })}
       </div>
 
       {goals.length === 0 && !isAddingNew && (
