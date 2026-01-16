@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Check,
   Download,
@@ -61,8 +61,6 @@ interface GalleryViewProps {
   checkoutUrl?: string | null;
   isAddingGoal?: boolean;
   credits?: number;
-  maxPhotos?: number;
-  photosUsed?: number;
 }
 
 export function GalleryView({
@@ -77,16 +75,41 @@ export function GalleryView({
   checkoutUrl,
   isAddingGoal,
   credits,
-  maxPhotos,
-  photosUsed,
 }: GalleryViewProps) {
   const [copied, setCopied] = useState(false);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [newGoalTitle, setNewGoalTitle] = useState("");
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [deleteGoalId, setDeleteGoalId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const reversedGoals = useMemo(() => [...goals].reverse(), [goals]);
+  // Filter out failed goals - they shouldn't clutter the UI
+  const reversedGoals = useMemo(
+    () => [...goals].filter((g) => g.status !== "failed").reverse(),
+    [goals]
+  );
+
+  // Keyboard shortcut: Press "T" to add a new goal
+  useEffect(() => {
+    if (!canAddMore || isAddingNew) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input/textarea
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+      if (e.key === "t" || e.key === "T") {
+        e.preventDefault();
+        setIsAddingNew(true);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [canAddMore, isAddingNew]);
 
   const rotations = useMemo(() => {
     const map: Record<string, number> = {};
@@ -150,15 +173,12 @@ export function GalleryView({
   const hasAnyCompletedImages = goals.some((g) => g.generatedImageUrl && !g.isGenerating);
 
   const getLimitsDisplay = () => {
-    if (isPro && credits !== undefined) {
-      return `${credits} credit${credits !== 1 ? "s" : ""} remaining`;
-    }
-    if (maxPhotos !== undefined && photosUsed !== undefined) {
-      const remaining = Math.max(0, maxPhotos - photosUsed);
-      if (remaining === 0) {
-        return isAuthenticated ? "Upgrade for more" : "Sign up for more";
+    // Unified credit system for all users
+    if (credits !== undefined) {
+      if (credits === 0) {
+        return isAuthenticated ? "Get more credits" : "Sign up for credits";
       }
-      return `${remaining}/${maxPhotos} free image${maxPhotos !== 1 ? "s" : ""}`;
+      return `${credits} credit${credits !== 1 ? "s" : ""} remaining`;
     }
     return null;
   };
@@ -179,6 +199,7 @@ export function GalleryView({
         <div className="flex items-center gap-2">
           {boardId && hasAnyCompletedImages && (
             <PDFExportDialog
+              boardId={boardId}
               goals={goals}
               trigger={
                 <Button variant="outline" size="sm" className="gap-2">
@@ -211,10 +232,10 @@ export function GalleryView({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
         {canAddMore && (
           <div
-            className="relative border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer hover:border-foreground/50 hover:bg-accent/50 transition-colors"
+            className="relative border-2 rounded-lg flex items-center justify-center cursor-pointer bg-card dark:bg-black shadow-md hover:border-foreground/50 hover:bg-accent/50 dark:hover:bg-accent/20 transition-colors"
             style={{ aspectRatio: "3 / 4" }}
             onClick={!isAddingNew ? handleAddCardClick : undefined}
           >
@@ -264,6 +285,9 @@ export function GalleryView({
                   <Plus className="size-6" />
                 </div>
                 <p className="text-sm text-muted-foreground">Add a goal</p>
+                <kbd className="pointer-events-none hidden sm:inline-flex h-5 min-w-5 select-none items-center justify-center rounded border border-b-2 border-muted-foreground/30 bg-gradient-to-b from-muted to-muted/80 px-1.5 font-mono text-[10px] font-medium text-muted-foreground shadow-[0_1px_0_1px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.2)]">
+                  T
+                </kbd>
               </div>
             )}
           </div>
@@ -371,9 +395,30 @@ export function GalleryView({
 
       <Dialog
         open={deleteGoalId !== null}
-        onOpenChange={(open) => !open && setDeleteGoalId(null)}
+        onOpenChange={(open) => !open && !isDeleting && setDeleteGoalId(null)}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent
+          className="sm:max-w-md"
+          onKeyDown={async (e) => {
+            if (isDeleting) return;
+            if (e.key === "d" || e.key === "D") {
+              e.preventDefault();
+              if (deleteGoalId && onDeleteGoal) {
+                setIsDeleting(true);
+                try {
+                  await onDeleteGoal(deleteGoalId);
+                } finally {
+                  setIsDeleting(false);
+                  setDeleteGoalId(null);
+                }
+              }
+            }
+            if (e.key === "c" || e.key === "C") {
+              e.preventDefault();
+              setDeleteGoalId(null);
+            }
+          }}
+        >
           <DialogHeader>
             <DialogTitle>Delete Goal</DialogTitle>
             <DialogDescription>
@@ -381,20 +426,42 @@ export function GalleryView({
               undone.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setDeleteGoalId(null)}>
+          <DialogFooter className="gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteGoalId(null)}
+              disabled={isDeleting}
+            >
               Cancel
+              <kbd className="ml-2 pointer-events-none inline-flex h-5 min-w-5 select-none items-center justify-center rounded border border-b-2 border-muted-foreground/30 bg-gradient-to-b from-muted to-muted/80 px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+                C
+              </kbd>
             </Button>
             <Button
               variant="destructive"
-              onClick={() => {
-                if (deleteGoalId && onDeleteGoal) {
-                  onDeleteGoal(deleteGoalId);
-                  setDeleteGoalId(null);
+              disabled={isDeleting}
+              onClick={async () => {
+                if (deleteGoalId && onDeleteGoal && !isDeleting) {
+                  setIsDeleting(true);
+                  try {
+                    await onDeleteGoal(deleteGoalId);
+                  } finally {
+                    setIsDeleting(false);
+                    setDeleteGoalId(null);
+                  }
                 }
               }}
             >
-              Delete
+              {isDeleting ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <>
+                  Delete
+                  <kbd className="ml-2 pointer-events-none inline-flex h-5 min-w-5 select-none items-center justify-center rounded border border-b-2 border-muted-foreground/30 bg-gradient-to-b from-destructive/20 to-destructive/10 px-1.5 font-mono text-[10px] font-medium text-destructive-foreground/80">
+                    D
+                  </kbd>
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

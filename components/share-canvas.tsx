@@ -63,7 +63,7 @@ export function ShareCanvas({ board }: ShareCanvasProps) {
   const isDark = mounted && resolvedTheme === "dark";
 
   return (
-    <div className="relative min-h-[500px] rounded-lg overflow-hidden p-4 sm:p-8">
+    <div className="relative min-h-[400px] sm:min-h-[500px] rounded-lg overflow-hidden p-3 sm:p-6">
       <div
         className="absolute inset-0 -z-10"
         style={{
@@ -73,16 +73,13 @@ export function ShareCanvas({ board }: ShareCanvasProps) {
           filter: isDark ? "invert(1) hue-rotate(180deg)" : undefined,
         }}
       />
-      <div className="flex flex-wrap items-start justify-center gap-6 sm:gap-8 max-w-5xl mx-auto">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
         {goalsWithImages.map((goal, index) => {
           const rotation = rotations[goal.id] ?? 0;
           return (
             <div
               key={goal.id}
-              className="w-full sm:w-[280px] md:w-[320px]"
-              style={{
-                aspectRatio: "3 / 4",
-              }}
+              style={{ aspectRatio: "3 / 4" }}
             >
               <ImageCard
                 id={goal.id}

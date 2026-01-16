@@ -136,9 +136,9 @@ export function ImageCard({
 
   if (isLoading) {
     return (
-      <div className={cn("relative w-full h-full overflow-hidden", className)}>
-        <Skeleton className="absolute inset-0" />
-        <div className="absolute inset-0 animate-border-beam" />
+      <div className={cn("relative w-full h-full overflow-hidden rounded-lg border-2 bg-card dark:bg-black shadow-md", className)}>
+        <Skeleton className="absolute inset-0 rounded-lg" />
+        <div className="absolute inset-0 animate-border-beam rounded-lg" />
         <div className="absolute inset-0 flex items-center justify-center">
           <p className="text-xs text-muted-foreground">{loadingMessage}</p>
         </div>
