@@ -16,7 +16,6 @@ import { LIMITS } from "@/lib/constants";
 import { Loader2, CheckCircle, X } from "lucide-react";
 
 const POLL_INTERVAL_MS = 1000;
-const FALLBACK_AFTER_MS = 12000;
 const MAX_POLL_TIME_MS = 30000;
 
 function CheckoutVerificationHandler({
@@ -110,15 +109,11 @@ function CheckoutVerificationHandler({
 
     const poll = async () => {
       const elapsed = Date.now() - startTimeRef.current;
-      const useFallback = elapsed >= FALLBACK_AFTER_MS;
 
       try {
         const url = new URL(`/api/polar/verify`, window.location.origin);
         url.searchParams.set("checkout_id", checkoutId);
         url.searchParams.set("since", since);
-        if (useFallback) {
-          url.searchParams.set("fallback", "1");
-        }
 
         const res = await fetch(url.toString());
         const data = await res.json();
@@ -140,11 +135,10 @@ function CheckoutVerificationHandler({
           return;
         }
 
-        // Continue polling
+        // Continue polling (e.g., if Polar checkout is still processing)
         pollIntervalRef.current = setTimeout(poll, POLL_INTERVAL_MS);
       } catch {
         // On network error, continue polling unless we've exceeded max time
-        const elapsed = Date.now() - startTimeRef.current;
         if (elapsed >= MAX_POLL_TIME_MS) {
           cleanup();
           setVerificationStatus("error");
@@ -323,6 +317,13 @@ export default function DashboardPage() {
     }
   }, [isLoadingAuth, isAuthenticated, router]);
 
+  // Force refetch boards data when page is visited to ensure fresh credits
+  useEffect(() => {
+    if (isAuthenticated && !isLoadingAuth) {
+      refetchBoards();
+    }
+  }, [isAuthenticated, isLoadingAuth, refetchBoards]);
+
   const checkoutUrl = userId
     ? `/api/polar/checkout?products=${process.env.NEXT_PUBLIC_POLAR_PRODUCT_ID}&customerExternalId=${userId}`
     : null;
@@ -362,8 +363,8 @@ export default function DashboardPage() {
           setIsVerifying={setIsVerifyingPayment}
         />
       </Suspense>
-      <header className="border-b sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50">
-        <div className="container mx-auto px-3 py-3 sm:px-4 sm:py-4">
+      <header className="sticky top-4 sm:top-6 z-50 container mx-auto px-3 sm:px-4">
+        <div className="max-w-4xl mx-auto py-2 sm:py-2.5 px-3 sm:px-4 bg-card dark:bg-black/90 backdrop-blur border rounded-lg shadow-md">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
               <h1 className="text-base sm:text-xl font-bold tracking-tight truncate">
@@ -376,7 +377,7 @@ export default function DashboardPage() {
             <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
               {isPaid && <ProBadge credits={credits} />}
               {!isPaid && (
-                <span className="text-xs px-2 py-1 bg-muted rounded-full text-muted-foreground">
+                <span className="text-xs h-9 px-2.5 sm:px-3 inline-flex items-center bg-muted rounded-md text-muted-foreground">
                   Free
                 </span>
               )}
@@ -395,7 +396,7 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <div className="container mx-auto px-3 py-6 sm:px-4 sm:py-12 flex-1">
+      <div className="container mx-auto px-3 pt-8 pb-6 sm:px-4 sm:pt-14 sm:pb-12 flex-1">
         {!hasExistingPhoto && (
           <div className="max-w-4xl mx-auto space-y-8 sm:space-y-12">
             <div className="flex justify-center">
@@ -436,6 +437,7 @@ export default function DashboardPage() {
               onCreateNewBoard={
                 canCreateNewBoard ? handleCreateBoard : undefined
               }
+              onAvatarChange={() => refetchBoards()}
               limits={limits}
               usage={usage}
             />
@@ -444,7 +446,7 @@ export default function DashboardPage() {
               <UpgradeCTA
                 isAuthenticated={isAuthenticated}
                 checkoutUrl={checkoutUrl}
-                message={`You've reached the limit of ${limits?.MAX_BOARDS_PER_USER} board${(limits?.MAX_BOARDS_PER_USER ?? LIMITS.FREE_MAX_BOARDS) === 1 ? "" : "s"}. Upgrade for unlimited boards and 50 more images.`}
+                message={`You've reached the limit of ${limits?.MAX_BOARDS_PER_USER} board${(limits?.MAX_BOARDS_PER_USER ?? LIMITS.MAX_BOARDS_PER_USER) === 1 ? "" : "s"}. Upgrade for unlimited boards and 50 more images.`}
               />
             )}
           </div>

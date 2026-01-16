@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { UserButton } from "@clerk/nextjs";
 import { ShareCanvas } from "@/components/share-canvas";
 import { GalleryView } from "@/components/gallery-view";
@@ -54,13 +55,19 @@ const defaultHeaders: HeadersInit = { "Content-Type": "application/json" };
 
 export function BoardView({ board }: BoardViewProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { userId, isLoading: isLoadingAuth, isAuthenticated } = useAuth();
   const [goals, setGoals] = useState<GoalType[]>([]);
   const [isAddingGoal, setIsAddingGoal] = useState(false);
   const [isPaid, setIsPaid] = useState(false);
   const [credits, setCredits] = useState(0);
-  const [maxPhotos, setMaxPhotos] = useState(LIMITS.FREE_MAX_PHOTOS);
-  const [freeImagesUsed, setFreeImagesUsed] = useState(0);
+
+  // Helper to update credits and recalculate isPaid status
+  const updateCreditsAndPaidStatus = useCallback((newCredits: number) => {
+    setCredits(newCredits);
+    // User is "paid" if they have more credits than the free tier
+    setIsPaid(newCredits > LIMITS.FREE_CREDITS);
+  }, []);
 
   const isOwner = isAuthenticated && board.profile.userId === userId;
   const [userPhotoUrl, setUserPhotoUrl] = useState<string | undefined>(
@@ -81,17 +88,17 @@ export function BoardView({ board }: BoardViewProps) {
   }, [board.goals]);
 
   useEffect(() => {
-    if (!isOwner) return;
+    // Only fetch if authenticated and potentially the owner
+    if (!isAuthenticated || isLoadingAuth) return;
+    // Only fetch for owners
+    if (board.profile.userId !== userId) return;
 
     const fetchCredits = async () => {
       try {
         const res = await fetch("/api/polar/credits");
         if (res.ok) {
           const data = await res.json();
-          setIsPaid(data.isPaid);
-          setCredits(data.credits);
-          setMaxPhotos(data.maxPhotos ?? LIMITS.FREE_MAX_PHOTOS);
-          setFreeImagesUsed(data.freeImagesUsed ?? 0);
+          updateCreditsAndPaidStatus(data.credits);
         }
       } catch {
         // Silently fail
@@ -99,7 +106,7 @@ export function BoardView({ board }: BoardViewProps) {
     };
 
     fetchCredits();
-  }, [isOwner]);
+  }, [isAuthenticated, isLoadingAuth, userId, board.profile.userId, board.id, updateCreditsAndPaidStatus]);
 
   const generatingGoalIds = goals
     .filter((g) => g.status === "generating" || g.status === "pending")
@@ -152,8 +159,9 @@ export function BoardView({ board }: BoardViewProps) {
           const creditsRes = await fetch("/api/polar/credits");
           if (creditsRes.ok) {
             const data = await creditsRes.json();
-            setFreeImagesUsed(data.freeImagesUsed ?? 0);
-            setCredits(data.credits);
+            updateCreditsAndPaidStatus(data.credits);
+            // Invalidate boards query so dashboard shows fresh credits
+            queryClient.invalidateQueries({ queryKey: ["boards", userId] });
           }
         }
       } catch {
@@ -162,13 +170,17 @@ export function BoardView({ board }: BoardViewProps) {
     }, 3000);
 
     return () => clearInterval(intervalId);
-  }, [generatingGoalIds, board.id, isOwner]);
+  }, [generatingGoalIds, board.id, isOwner, queryClient, userId, updateCreditsAndPaidStatus]);
 
   const addAndGenerateGoal = useCallback(
     async (title: string) => {
       if (!userPhotoUrl) return;
 
       setIsAddingGoal(true);
+
+      // Optimistic: Decrement credit immediately
+      const previousCredits = credits;
+      setCredits((prev) => Math.max(0, prev - 1));
 
       // Optimistic: Add goal to UI immediately with temp ID
       const tempId = `temp-${generateGoalId()}`;
@@ -199,7 +211,7 @@ export function BoardView({ board }: BoardViewProps) {
         );
 
         // Generate image and phrase in parallel
-        const [imageResult, phraseResult] = await Promise.all([
+        const [imageRes, phraseRes] = await Promise.all([
           fetch("/api/generate-image", {
             method: "POST",
             headers: defaultHeaders,
@@ -208,38 +220,61 @@ export function BoardView({ board }: BoardViewProps) {
               goalId: dbGoal.id,
               goalPrompt: title,
             }),
-          }).then((r) => r.json()),
+          }),
           fetch("/api/generate-phrase", {
             method: "POST",
             headers: defaultHeaders,
             body: JSON.stringify({ goalId: dbGoal.id, goalTitle: title }),
-          }).then((r) => r.json()),
+          }),
         ]);
 
-        setGoals((prev) =>
-          prev.map((g) =>
-            g.id === dbGoal.id
-              ? {
-                  ...g,
-                  isGenerating: false,
-                  generatedImageUrl: imageResult.imageUrl,
-                  phrase: phraseResult.phrase,
-                  status: "completed" as const,
-                }
-              : g,
-          ),
-        );
+        const imageResult = await imageRes.json();
+        const phraseResult = await phraseRes.json();
 
+        // Check if image generation succeeded and returned a valid URL
+        if (!imageRes.ok || !imageResult.imageUrl) {
+          // Keep goal in generating state so polling can pick it up, or mark as failed
+          setGoals((prev) =>
+            prev.map((g) =>
+              g.id === dbGoal.id
+                ? { ...g, isGenerating: true, status: "generating" as const }
+                : g,
+            ),
+          );
+        } else {
+          // Only mark as completed when we have a valid imageUrl
+          setGoals((prev) =>
+            prev.map((g) =>
+              g.id === dbGoal.id
+                ? {
+                    ...g,
+                    isGenerating: false,
+                    generatedImageUrl: imageResult.imageUrl,
+                    phrase: phraseResult.phrase,
+                    status: "completed" as const,
+                  }
+                : g,
+            ),
+          );
+        }
+
+        // Update credits from server response or refetch
         if (imageResult.credits !== undefined) {
-          setCredits(imageResult.credits);
+          updateCreditsAndPaidStatus(imageResult.credits);
+        } else {
+          const creditsRes = await fetch("/api/polar/credits");
+          if (creditsRes.ok) {
+            const data = await creditsRes.json();
+            updateCreditsAndPaidStatus(data.credits);
+          }
         }
 
-        const creditsRes = await fetch("/api/polar/credits");
-        if (creditsRes.ok) {
-          const data = await creditsRes.json();
-          setFreeImagesUsed(data.freeImagesUsed ?? 0);
-        }
+        // Invalidate boards query so dashboard shows fresh credits when navigating back
+        queryClient.invalidateQueries({ queryKey: ["boards", userId] });
       } catch {
+        // Restore credit on error
+        updateCreditsAndPaidStatus(previousCredits);
+
         // Remove optimistic goal or mark as failed
         setGoals((prev) => {
           const goalToUpdate = prev.find(
@@ -261,7 +296,7 @@ export function BoardView({ board }: BoardViewProps) {
         setIsAddingGoal(false);
       }
     },
-    [board.id, userPhotoUrl],
+    [board.id, userPhotoUrl, credits, queryClient, userId],
   );
 
   const deleteGoal = useCallback(async (goalId: string) => {
@@ -281,10 +316,8 @@ export function BoardView({ board }: BoardViewProps) {
     : null;
 
   const pendingGoals = goals.filter((g) => g.isGenerating).length;
-  const effectivePhotosUsed = freeImagesUsed + pendingGoals;
-  const canAddMoreGoals = isPaid
-    ? credits > pendingGoals
-    : effectivePhotosUsed < maxPhotos;
+  // Simplified: can add more goals if credits (minus pending) > 0
+  const canAddMoreGoals = credits > pendingGoals;
   const isAtLimit = !canAddMoreGoals;
 
   if (isLoadingAuth) {
@@ -299,28 +332,35 @@ export function BoardView({ board }: BoardViewProps) {
   if (!isOwner) {
     return (
       <main className="min-h-screen bg-background bg-dotted-grid flex flex-col">
-        <header className="border-b sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50">
-          <div className="container mx-auto px-4 py-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight">
-                  Agentic Vision Board
+        <header className="sticky top-4 sm:top-6 z-50 container mx-auto px-3 sm:px-4">
+          <div className="max-w-4xl mx-auto py-2 sm:py-2.5 px-3 sm:px-4 bg-card dark:bg-black/90 backdrop-blur border rounded-lg shadow-md">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <h1 className="text-base sm:text-xl font-bold tracking-tight truncate">
+                  Vision Board
                 </h1>
-                <p className="text-sm text-muted-foreground">2026 Edition</p>
+                <p className="text-xs text-muted-foreground hidden sm:block">
+                  2026 Edition
+                </p>
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
                 <ThemeSwitcherButton />
                 <GithubBadge />
-                <Button asChild>
-                  <a href="/b">Create your own</a>
+                <Button size="sm" asChild>
+                  <a href="/b">
+                    <span className="hidden sm:inline">Create your own</span>
+                    <span className="sm:hidden">Create</span>
+                  </a>
                 </Button>
               </div>
             </div>
           </div>
         </header>
 
-        <div className="container mx-auto px-4 py-8 flex-1">
-          <ShareCanvas board={board} />
+        <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 flex-1">
+          <div className="max-w-4xl mx-auto">
+            <ShareCanvas board={board} />
+          </div>
         </div>
 
         <SponsorFooter />
@@ -331,8 +371,8 @@ export function BoardView({ board }: BoardViewProps) {
   // Owner view with editing capabilities
   return (
     <main className="min-h-screen bg-background bg-dotted-grid flex flex-col">
-      <header className="border-b sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50">
-        <div className="container mx-auto px-3 py-3 sm:px-4 sm:py-4">
+      <header className="sticky top-4 sm:top-6 z-50 container mx-auto px-3 sm:px-4">
+        <div className="max-w-4xl mx-auto py-2 sm:py-2.5 px-3 sm:px-4 bg-card dark:bg-black/90 backdrop-blur border rounded-lg shadow-md">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 sm:gap-4 min-w-0">
               <EditableAvatar
@@ -353,7 +393,7 @@ export function BoardView({ board }: BoardViewProps) {
             <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
               {isPaid && <ProBadge credits={credits} />}
               {!isPaid && (
-                <span className="text-xs px-2 py-1 bg-muted rounded-full text-muted-foreground">
+                <span className="text-xs h-9 px-2.5 sm:px-3 inline-flex items-center bg-muted rounded-md text-muted-foreground">
                   Free
                 </span>
               )}
@@ -399,8 +439,6 @@ export function BoardView({ board }: BoardViewProps) {
             checkoutUrl={checkoutUrl}
             isAddingGoal={isAddingGoal}
             credits={credits}
-            maxPhotos={maxPhotos}
-            photosUsed={freeImagesUsed}
           />
 
           {isAtLimit && !isPaid && goals.length > 0 && (
