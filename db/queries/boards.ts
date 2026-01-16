@@ -47,7 +47,7 @@ export async function getVisionBoardsForProfile(profileId: string) {
     with: {
       goals: true,
     },
-    orderBy: (boards, { desc }) => [desc(boards.createdAt)],
+    orderBy: (boards, { asc }) => [asc(boards.createdAt)],
   });
 }
 
