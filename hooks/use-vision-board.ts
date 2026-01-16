@@ -83,6 +83,8 @@ export function useVisionBoard() {
       return res.json();
     },
     enabled: !isLoadingAuth && isAuthenticated,
+    refetchOnMount: "always",
+    staleTime: 0,
   });
 
   const goalsRef = useRef(goals);
@@ -176,6 +178,34 @@ export function useVisionBoard() {
       }
       return res.json();
     },
+    onMutate: async () => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey });
+
+      // Snapshot the previous value
+      const previousData = queryClient.getQueryData<BoardsResponse>(queryKey);
+
+      // Optimistically deduct 1 credit immediately
+      if (previousData && previousData.credits > 0) {
+        queryClient.setQueryData<BoardsResponse>(queryKey, {
+          ...previousData,
+          credits: previousData.credits - 1,
+        });
+      }
+
+      // Return context with the snapshot
+      return { previousData };
+    },
+    onError: (_err, _variables, context) => {
+      // Rollback on error (credit will be refunded by server)
+      if (context?.previousData) {
+        queryClient.setQueryData(queryKey, context.previousData);
+      }
+    },
+    onSettled: () => {
+      // Always refetch after error or success to ensure consistency with server
+      queryClient.invalidateQueries({ queryKey });
+    },
   });
 
   const generatePhraseMutation = useMutation({
@@ -208,7 +238,35 @@ export function useVisionBoard() {
       if (!res.ok) throw new Error("Failed to delete goal");
       return res.json();
     },
-    onSuccess: () => {
+    onMutate: async (goalId) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey });
+
+      // Snapshot the previous value
+      const previousData = queryClient.getQueryData<BoardsResponse>(queryKey);
+
+      // Optimistically remove the goal from boards
+      if (previousData) {
+        queryClient.setQueryData<BoardsResponse>(queryKey, {
+          ...previousData,
+          boards: previousData.boards.map((board) => ({
+            ...board,
+            goals: board.goals.filter((g) => g.id !== goalId),
+          })),
+        });
+      }
+
+      // Return context with the snapshot
+      return { previousData };
+    },
+    onError: (_err, _goalId, context) => {
+      // Rollback on error
+      if (context?.previousData) {
+        queryClient.setQueryData(queryKey, context.previousData);
+      }
+    },
+    onSettled: () => {
+      // Always refetch after error or success to ensure consistency
       queryClient.invalidateQueries({ queryKey });
     },
   });
@@ -222,7 +280,36 @@ export function useVisionBoard() {
       if (!res.ok) throw new Error("Failed to delete board");
       return res.json();
     },
-    onSuccess: () => {
+    onMutate: async (boardId) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey });
+
+      // Snapshot the previous value
+      const previousData = queryClient.getQueryData<BoardsResponse>(queryKey);
+
+      // Optimistically update to remove the board
+      if (previousData) {
+        queryClient.setQueryData<BoardsResponse>(queryKey, {
+          ...previousData,
+          boards: previousData.boards.filter((b) => b.id !== boardId),
+          usage: {
+            ...previousData.usage,
+            boards: previousData.usage.boards - 1,
+          },
+        });
+      }
+
+      // Return context with the snapshot
+      return { previousData };
+    },
+    onError: (_err, _boardId, context) => {
+      // Rollback on error
+      if (context?.previousData) {
+        queryClient.setQueryData(queryKey, context.previousData);
+      }
+    },
+    onSettled: () => {
+      // Always refetch after error or success to ensure consistency
       queryClient.invalidateQueries({ queryKey });
     },
   });
@@ -237,7 +324,34 @@ export function useVisionBoard() {
       if (!res.ok) throw new Error("Failed to rename board");
       return res.json();
     },
-    onSuccess: () => {
+    onMutate: async ({ boardId, name }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey });
+
+      // Snapshot the previous value
+      const previousData = queryClient.getQueryData<BoardsResponse>(queryKey);
+
+      // Optimistically update the board name
+      if (previousData) {
+        queryClient.setQueryData<BoardsResponse>(queryKey, {
+          ...previousData,
+          boards: previousData.boards.map((b) =>
+            b.id === boardId ? { ...b, name } : b
+          ),
+        });
+      }
+
+      // Return context with the snapshot
+      return { previousData };
+    },
+    onError: (_err, _variables, context) => {
+      // Rollback on error
+      if (context?.previousData) {
+        queryClient.setQueryData(queryKey, context.previousData);
+      }
+    },
+    onSettled: () => {
+      // Always refetch after error or success to ensure consistency
       queryClient.invalidateQueries({ queryKey });
     },
   });
@@ -298,21 +412,33 @@ export function useVisionBoard() {
           }),
         ]);
 
-        setGoals((prev) =>
-          prev.map((g) =>
-            g.id === dbGoal.id
-              ? {
-                  ...g,
-                  isGenerating: false,
-                  generatedImageUrl: imageResult.imageUrl,
-                  phrase: phraseResult.phrase,
-                  status: "completed" as const,
-                }
-              : g,
-          ),
-        );
+        // Only mark as completed if we have a valid imageUrl
+        if (imageResult.imageUrl) {
+          setGoals((prev) =>
+            prev.map((g) =>
+              g.id === dbGoal.id
+                ? {
+                    ...g,
+                    isGenerating: false,
+                    generatedImageUrl: imageResult.imageUrl,
+                    phrase: phraseResult.phrase,
+                    status: "completed" as const,
+                  }
+                : g,
+            ),
+          );
+        } else {
+          // Keep in generating state so polling can pick it up
+          setGoals((prev) =>
+            prev.map((g) =>
+              g.id === dbGoal.id
+                ? { ...g, isGenerating: true, status: "generating" as const }
+                : g,
+            ),
+          );
+        }
 
-        queryClient.invalidateQueries({ queryKey });
+        // Note: Query invalidation is handled by generateImageMutation's onSettled
       } catch (error) {
         if (goalId) {
           setGoals((prev) =>
@@ -359,21 +485,24 @@ export function useVisionBoard() {
           }),
         ]);
 
-        setGoals((prev) =>
-          prev.map((g) =>
-            g.id === goalId
-              ? {
-                  ...g,
-                  isGenerating: false,
-                  generatedImageUrl: imageResult.imageUrl,
-                  phrase: phraseResult.phrase,
-                  status: "completed" as const,
-                }
-              : g,
-          ),
-        );
-
-        queryClient.invalidateQueries({ queryKey });
+        // Only mark as completed if we have a valid imageUrl
+        if (imageResult.imageUrl) {
+          setGoals((prev) =>
+            prev.map((g) =>
+              g.id === goalId
+                ? {
+                    ...g,
+                    isGenerating: false,
+                    generatedImageUrl: imageResult.imageUrl,
+                    phrase: phraseResult.phrase,
+                    status: "completed" as const,
+                  }
+                : g,
+            ),
+          );
+        }
+        // If no imageUrl, keep in generating state so polling can pick it up
+        // Note: Query invalidation is handled by generateImageMutation's onSettled
       } catch {
         setGoals((prev) =>
           prev.map((g) =>
@@ -384,7 +513,7 @@ export function useVisionBoard() {
         );
       }
     },
-    [boardData, goals, generateImageMutation, generatePhraseMutation, queryClient, queryKey],
+    [boardData, goals, generateImageMutation, generatePhraseMutation],
   );
 
   const deleteGoal = useCallback(
@@ -420,46 +549,92 @@ export function useVisionBoard() {
     setStep("upload");
   }, []);
 
+  const createBoardMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/boards", {
+        method: "POST",
+        headers: defaultHeaders,
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to create board");
+      }
+
+      return res.json();
+    },
+    onMutate: async () => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey });
+
+      // Snapshot the previous value
+      const previousData = queryClient.getQueryData<BoardsResponse>(queryKey);
+
+      // Optimistically add a placeholder board
+      if (previousData) {
+        const tempBoard: VisionBoard & { goals: DBGoalType[] } = {
+          id: `temp-${Date.now()}`,
+          profileId: previousData.profile?.id ?? "",
+          name: "2026 Vision Board",
+          createdAt: new Date(),
+          goals: [],
+        };
+
+        queryClient.setQueryData<BoardsResponse>(queryKey, {
+          ...previousData,
+          boards: [tempBoard, ...previousData.boards],
+          usage: {
+            ...previousData.usage,
+            boards: previousData.usage.boards + 1,
+          },
+        });
+      }
+
+      // Return context with the snapshot
+      return { previousData };
+    },
+    onError: (_err, _variables, context) => {
+      // Rollback on error
+      if (context?.previousData) {
+        queryClient.setQueryData(queryKey, context.previousData);
+      }
+    },
+    onSettled: () => {
+      // Always refetch after error or success to ensure consistency
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+
   const createBoardWithExistingPhoto = useCallback(async (): Promise<string | null> => {
     const profile = boardsData?.profile;
     if (!profile?.avatarNoBgUrl) return null;
     if (!userId) return null;
 
-    const res = await fetch("/api/boards", {
-      method: "POST",
-      headers: defaultHeaders,
-    });
-
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.error || "Failed to create board");
+    try {
+      const data = await createBoardMutation.mutateAsync();
+      setBoardData({
+        boardId: data.boardId,
+        profileId: data.profileId,
+        avatarOriginalUrl: data.avatarOriginalUrl,
+        avatarNoBgUrl: data.avatarNoBgUrl,
+      });
+      setGoals([]);
+      setStep("gallery");
+      return data.boardId;
+    } catch (error) {
+      console.error("Failed to create board:", error);
+      return null;
     }
-
-    const data = await res.json();
-    setBoardData({
-      boardId: data.boardId,
-      profileId: data.profileId,
-      avatarOriginalUrl: data.avatarOriginalUrl,
-      avatarNoBgUrl: data.avatarNoBgUrl,
-    });
-    setGoals([]);
-    setStep("gallery");
-    queryClient.invalidateQueries({ queryKey });
-    return data.boardId;
-  }, [boardsData, userId, queryClient, queryKey]);
+  }, [boardsData, userId, createBoardMutation]);
 
   const profile = boardsData?.profile;
   const hasExistingPhoto = !!profile?.avatarNoBgUrl;
   const isPaid = boardsData?.isPaid ?? false;
   const credits = boardsData?.credits ?? 0;
-  const photosUsed = boardsData?.usage?.photos ?? 0;
-  const maxPhotos = boardsData?.limits?.MAX_PHOTOS_PER_USER ?? LIMITS.FREE_MAX_PHOTOS;
 
   const pendingGoals = goals.filter((g) => g.isGenerating).length;
-  const effectivePhotosUsed = photosUsed + pendingGoals;
-  const canAddMoreGoals = isPaid
-    ? credits > pendingGoals
-    : effectivePhotosUsed < maxPhotos;
+  // Simplified: can add more goals if credits (minus pending) > 0
+  const canAddMoreGoals = credits > pendingGoals;
   const isAtLimit = !canAddMoreGoals;
   const isGenerating = goals.some((g) => g.isGenerating);
 
