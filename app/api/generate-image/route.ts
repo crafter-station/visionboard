@@ -4,14 +4,13 @@ import { generateImageWithUser } from "@/lib/fal";
 import { validateRequest } from "@/lib/auth";
 import {
   updateGoal,
-  countGeneratedPhotosForProfile,
   getUserLimits,
   deductCredit,
   addCredit,
   LIMITS,
   getProfileByIdentifier,
   getCreditsForProfile,
-  incrementFreeImagesUsed,
+  initializeFreeCredits,
 } from "@/db/queries";
 import { db } from "@/db";
 import { goals } from "@/db/schema";
@@ -65,55 +64,40 @@ export async function POST(request: Request) {
     );
   }
 
+  // Initialize free credits if this is a new user
+  await initializeFreeCredits(profile.id);
+
   const isRegeneration = !!existingGoal.generatedImageUrl;
-  const credits = await getCreditsForProfile(profile.id);
+  let credits = await getCreditsForProfile(profile.id);
   const limits = getUserLimits(credits);
 
-  if (!isRegeneration) {
-    if (limits.isPaid) {
-      if (credits <= 0) {
-        return NextResponse.json(
-          {
-            error:
-              "No credits remaining. Purchase more to continue generating images.",
-            requiresUpgrade: true,
-            credits: 0,
-          },
-          { status: 400 },
-        );
-      }
-    } else {
-      const photoCount = await countGeneratedPhotosForProfile(profile.id);
-      if (photoCount >= LIMITS.FREE_MAX_PHOTOS) {
-        return NextResponse.json(
-          {
-            error: `Free limit of ${LIMITS.FREE_MAX_PHOTOS} image${LIMITS.FREE_MAX_PHOTOS === 1 ? "" : "s"} reached. Purchase credits for more.`,
-            requiresUpgrade: true,
-          },
-          { status: 400 },
-        );
-      }
-    }
-  }
-
-  // Deduct credit BEFORE calling FAL to prevent abuse
+  // For new generations, check and deduct credits
   let creditDeducted = false;
-  let newCredits = credits;
 
   if (!isRegeneration) {
-    if (limits.isPaid) {
-      const success = await deductCredit(profile.id);
-      if (!success) {
-        return NextResponse.json(
-          { error: "Failed to deduct credit", requiresUpgrade: true },
-          { status: 400 },
-        );
-      }
-      creditDeducted = true;
-      newCredits = credits - 1;
-    } else {
-      await incrementFreeImagesUsed(profile.id);
+    // Check if user has enough credits
+    if (credits < LIMITS.CREDIT_COST_PER_IMAGE) {
+      return NextResponse.json(
+        {
+          error:
+            "No credits remaining. Purchase more to continue generating images.",
+          requiresUpgrade: true,
+          credits: 0,
+        },
+        { status: 400 },
+      );
     }
+
+    // Deduct credit BEFORE calling FAL to prevent abuse
+    const success = await deductCredit(profile.id);
+    if (!success) {
+      return NextResponse.json(
+        { error: "Failed to deduct credit", requiresUpgrade: true },
+        { status: 400 },
+      );
+    }
+    creditDeducted = true;
+    credits = credits - LIMITS.CREDIT_COST_PER_IMAGE;
   }
 
   await updateGoal(goalId, { status: "generating" });
@@ -122,11 +106,21 @@ export async function POST(request: Request) {
     const generatedUrl = await generateImageWithUser(userImageUrl, goalPrompt);
 
     const response = await fetch(generatedUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch generated image: ${response.status} ${response.statusText}`);
+    }
     const imageBuffer = await response.arrayBuffer();
+    if (imageBuffer.byteLength === 0) {
+      throw new Error("Generated image is empty");
+    }
 
-    const blob = await put(`goal-${goalId}-${Date.now()}.png`, imageBuffer, {
+    // Use the content type from the response, fallback to png
+    const contentType = response.headers.get("content-type") || "image/png";
+    const extension = contentType.includes("jpeg") || contentType.includes("jpg") ? "jpg" : "png";
+
+    const blob = await put(`goal-${goalId}-${Date.now()}.${extension}`, imageBuffer, {
       access: "public",
-      contentType: "image/png",
+      contentType,
       token: process.env.BLOB_READ_WRITE_TOKEN,
     });
 
@@ -135,18 +129,24 @@ export async function POST(request: Request) {
       status: "completed",
     });
 
+    // Fetch current credits after generation completes to avoid returning stale values
+    // when multiple images are generated in parallel
+    const currentCredits = await getCreditsForProfile(profile.id);
+
     return NextResponse.json({
       goalId,
       imageUrl: blob.url,
       remaining,
-      credits: newCredits,
+      credits: currentCredits,
     });
   } catch (err) {
+    console.error(`[generate-image] Error for goal ${goalId}:`, err);
     await updateGoal(goalId, { status: "failed" });
 
     // Refund credit if FAL generation failed
     if (creditDeducted) {
       await addCredit(profile.id);
+      console.log(`[generate-image] Refunded credit for failed goal ${goalId}`);
     }
 
     throw err;

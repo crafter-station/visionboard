@@ -9,6 +9,7 @@ import {
   countBoardsForProfile,
   getCreditsForProfile,
   generateDefaultBoardName,
+  initializeFreeCredits,
 } from "@/db/queries";
 import { LIMITS } from "@/lib/constants";
 import { getAuthIdentifier } from "@/lib/auth";
@@ -27,9 +28,9 @@ export async function GET() {
       boards: [],
       profile: null,
       limits: {
-        MAX_BOARDS_PER_USER: LIMITS.FREE_MAX_BOARDS,
+        MAX_BOARDS_PER_USER: LIMITS.MAX_BOARDS_PER_USER,
         MAX_GOALS_PER_BOARD: LIMITS.MAX_GOALS_PER_BOARD,
-        MAX_PHOTOS_PER_USER: LIMITS.FREE_MAX_PHOTOS,
+        MAX_PHOTOS_PER_USER: LIMITS.FREE_CREDITS,
       },
       usage: {
         boards: 0,
@@ -37,9 +38,12 @@ export async function GET() {
       },
       isAuthenticated: true,
       isPaid: false,
-      credits: 0,
+      credits: LIMITS.FREE_CREDITS,
     });
   }
+
+  // Initialize free credits for new users
+  await initializeFreeCredits(profile.id);
 
   const boards = await getVisionBoardsForProfile(profile.id);
   const credits = await getCreditsForProfile(profile.id);
@@ -59,7 +63,7 @@ export async function GET() {
     },
     usage: {
       boards: boards.length,
-      photos: profile.freeImagesUsed,
+      photos: credits, // Now photos usage is just the current credit count
     },
     isAuthenticated: true,
     isPaid: limits.isPaid,

@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   if (boardCount >= limits.maxBoards) {
     return NextResponse.json(
       {
-        error: `Maximum ${limits.maxBoards} board${limits.maxBoards === 1 ? "" : "s"} allowed. ${!limits.isPaid ? "Upgrade for more." : "Delete an existing board to create a new one."}`,
+        error: `Maximum ${limits.maxBoards} boards allowed. Delete an existing board to create a new one.`,
         requiresUpgrade: !limits.isPaid,
       },
       { status: 400 },
