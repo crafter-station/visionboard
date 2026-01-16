@@ -18,7 +18,6 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const checkoutId = searchParams.get("checkout_id");
   const sinceParam = searchParams.get("since");
-  const useFallback = searchParams.get("fallback") === "1";
 
   if (!checkoutId) {
     return NextResponse.json({ error: "Missing checkout_id" }, { status: 400 });
@@ -33,7 +32,7 @@ export async function GET(request: Request) {
   try {
     const profile = await getOrCreateProfile({ userId });
 
-    // DB-first: check if webhook has already processed the payment
+    // DB-first: check if webhook has already processed the payment (fast path)
     if (sinceParam) {
       const since = new Date(sinceParam);
       const { hasPurchase, credits } = await hasPurchaseSince(profile.id, since);
@@ -48,20 +47,11 @@ export async function GET(request: Request) {
           maxBoards: limits.maxBoards,
         });
       }
-
-      // No recent purchase found yet - if not using fallback, return pending
-      if (!useFallback) {
-        const currentCredits = await getCreditsForProfile(profile.id);
-        return NextResponse.json({
-          verified: false,
-          status: "pending",
-          credits: currentCredits,
-          isPaid: currentCredits > 0,
-        });
-      }
+      // If webhook hasn't processed yet, immediately fall through to Polar API
+      // instead of waiting for fallback flag (removes 3-second delay)
     }
 
-    // Fallback: call Polar API directly
+    // Call Polar API directly to verify checkout status
     const checkout = await polar.checkouts.get({ id: checkoutId });
 
     if (checkout.status !== "succeeded") {
@@ -82,13 +72,29 @@ export async function GET(request: Request) {
       );
     }
 
-    // Use the order ID from the checkout for idempotent addCredits (matches webhook)
-    const orderId = (checkout as any).order?.id ?? checkoutId;
+    // Get the order associated with this checkout to ensure consistent order ID
+    // This matches what the webhook receives (order.id)
+    const ordersResponse = await polar.orders.list({ checkoutId: checkoutId, limit: 1 });
+    const orders = ordersResponse.result.items;
+
+    if (!orders || orders.length === 0) {
+      console.error("No order found for checkout:", checkoutId);
+      const currentCredits = await getCreditsForProfile(profile.id);
+      return NextResponse.json({
+        verified: false,
+        status: "no_order",
+        credits: currentCredits,
+        isPaid: currentCredits > 0,
+      });
+    }
+
+    const order = orders[0];
+    console.log(`[Verify] Processing order ${order.id} for checkout ${checkoutId}`);
 
     await addCredits(
       profile.id,
       LIMITS.PAID_CREDITS_PER_PURCHASE,
-      orderId,
+      order.id,
       checkout.customerId ?? undefined,
     );
 

@@ -4,11 +4,13 @@ import { addCredits, LIMITS, getOrCreateProfile } from "@/db/queries";
 export const POST = Webhooks({
   webhookSecret: process.env.POLAR_WEBHOOK_SECRET!,
   onOrderPaid: async (payload) => {
-    const order = payload.data as any;
+    const order = payload.data;
     const userId = order.customer?.externalId;
 
+    console.log(`[Webhook] Received order.paid event for order ${order.id}, checkout ${order.checkoutId}`);
+
     if (!userId) {
-      console.error("No external user ID in order:", order.id);
+      console.error(`[Webhook] No external user ID in order: ${order.id}`);
       return;
     }
 
@@ -22,12 +24,12 @@ export const POST = Webhooks({
     );
 
     if (alreadyProcessed) {
-      console.log("Order already processed:", order.id);
+      console.log(`[Webhook] Order already processed: ${order.id}`);
       return;
     }
 
     console.log(
-      `Added ${LIMITS.PAID_CREDITS_PER_PURCHASE} credits to profile ${profile.id} (user ${userId})`,
+      `[Webhook] Added ${LIMITS.PAID_CREDITS_PER_PURCHASE} credits to profile ${profile.id} (user ${userId}) for order ${order.id}`,
     );
   },
 });
