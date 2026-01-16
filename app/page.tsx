@@ -38,8 +38,8 @@ export default function LandingPage() {
 
   return (
     <main className="min-h-screen bg-background bg-dotted-grid flex flex-col">
-      <header className="border-b sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50">
-        <div className="container mx-auto px-3 py-3 sm:px-4 sm:py-4">
+      <header className="sticky top-4 sm:top-6 z-50 container mx-auto px-3 sm:px-4">
+        <div className="max-w-4xl mx-auto py-2 sm:py-2.5 px-3 sm:px-4 bg-card dark:bg-black/90 backdrop-blur border rounded-lg shadow-md">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
               <h1 className="text-base sm:text-xl font-bold tracking-tight truncate">
@@ -69,15 +69,13 @@ export default function LandingPage() {
         </div>
       </header>
 
-      <div className="container mx-auto px-3 py-6 sm:px-4 sm:py-12 flex-1 flex flex-col items-center justify-center">
-        <div className="max-w-4xl mx-auto space-y-8 sm:space-y-12 text-center">
-          <div className="flex justify-center">
-            <img
-              src="/brand/hero-Image.png"
-              alt="Vision Board AI"
-              className="w-full max-w-md sm:max-w-2xl h-auto object-contain"
-            />
-          </div>
+      <div className="container mx-auto px-3 pt-10 pb-6 sm:px-4 sm:pt-16 sm:pb-8 flex-1 flex flex-col items-center">
+        <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8 text-center">
+          <img
+            src="/brand/hero-Image.png"
+            alt="Vision Board AI"
+            className="w-full h-auto object-contain rounded-lg"
+          />
           <div className="max-w-2xl mx-auto space-y-6 sm:space-y-8">
             <div className="space-y-4">
               <h2 className="text-2xl sm:text-4xl font-bold tracking-tight">
