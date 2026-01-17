@@ -331,12 +331,10 @@ export function PDFExportDialog({ boardId, goals, trigger }: PDFExportDialogProp
           <Button
             onClick={handleExport}
             disabled={isGenerating || goalsWithImages.length === 0}
+            className="min-w-[120px]"
           >
             {isGenerating ? (
-              <>
-                <Loader2 className="size-4 mr-2 animate-spin" />
-                Generating...
-              </>
+              <Loader2 className="size-4 animate-spin" />
             ) : (
               <>
                 <Scissors className="size-4 mr-2" />
