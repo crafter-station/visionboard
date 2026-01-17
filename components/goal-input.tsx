@@ -166,7 +166,7 @@ export function GoalInput({
           ) : (
             <>
               <Sparkles className="size-4 mr-2" />
-              Generate Vision Board ({goals.length}/{maxGoals})
+              Generate Vision Board ({goals.length})
             </>
           )}
         </Button>
