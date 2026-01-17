@@ -66,10 +66,10 @@ function buildImagePrompt(goalPrompt: string, scene?: SceneData): string {
     console.log(`[DEV_MOCK_FAL] Props: ${propsText}`);
     console.log(`[DEV_MOCK_FAL] Atmosphere: ${scene.atmosphere}`);
     console.log(`[DEV_MOCK_FAL] Goal prompt: ${goalPrompt}`);
-    return `8-bit pixel-art scene: ${scene.setting}. This person is ${scene.action}, achieving their goal of "${goalPrompt}". ${propsText ? `Include these elements: ${propsText}.` : ""} Atmosphere: ${scene.atmosphere}. The person is happy, confident, and actively living their dream. Style: realistic proportions, anime inspired, vibrant colors, cute and tender. IMPORTANT: make sure head and body are properly proportioned and aligned with the rest of the body.`;
+    return `8-bit pixel-art scene: ${scene.setting}. This person is ${scene.action}, achieving their goal of "${goalPrompt}". ${propsText ? `Include these elements: ${propsText}.` : ""} Atmosphere: ${scene.atmosphere}. The person is happy, confident, and actively living their dream. Style: realistic proportions, anime inspired, vibrant colors, cute and tender. IMPORTANT: make sure head and body are properly proportioned and aligned with the rest of the body., make sure 8-bit pixel-art style is maintained`;
   }
 
-  return `8-bit pixel-art scene showing this person ${goalPrompt}. Full scene with environment and context that represents achieving this goal. The person is happy, confident, and actively living their dream. Include relevant props, setting, and atmosphere. Style: realistic proportions, anime inspired, vibrant colors, cute and tender, IMPORTANT: make sure head and body are properly proportioned and aligned with the rest of the body.`;
+  return `8-bit pixel-art scene showing this person ${goalPrompt}. Full scene with environment and context that represents achieving this goal. The person is happy, confident, and actively living their dream. Include relevant props, setting, and atmosphere. Style: realistic proportions, anime inspired, vibrant colors, cute and tender, IMPORTANT: make sure head and body are properly proportioned and aligned with the rest of the body., make sure 8-bit pixel-art style is maintained`;
 }
 
 export async function generateImageWithUser(
