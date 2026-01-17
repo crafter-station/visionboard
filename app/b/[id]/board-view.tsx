@@ -30,6 +30,12 @@ interface BoardData {
     title: string;
     generatedImageUrl: string | null;
     phrase: string | null;
+    sceneData: {
+      setting: string;
+      action: string;
+      props: string[];
+      atmosphere: string;
+    } | null;
     status: "pending" | "generating" | "completed" | "failed";
     positionX: number;
     positionY: number;
