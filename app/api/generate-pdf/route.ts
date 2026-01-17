@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import puppeteer from "puppeteer-core";
 import chromium from "@sparticuz/chromium";
+import { put } from "@vercel/blob";
 
 type PDFLayout = "2-col" | "3-col";
 type PaperSize = "letter" | "a4";
@@ -119,12 +120,15 @@ export async function POST(request: NextRequest) {
 
       await page.close();
 
-      return new NextResponse(Buffer.from(pdfBuffer), {
-        headers: {
-          "Content-Type": "application/pdf",
-          "Content-Disposition": `attachment; filename="vision-board-${layout}-${Date.now()}.pdf"`,
-        },
+      // Upload PDF to Vercel Blob
+      const filename = `vision-board-${boardId}-${layout}-${Date.now()}.pdf`;
+      const blob = await put(filename, Buffer.from(pdfBuffer), {
+        access: "public",
+        contentType: "application/pdf",
+        token: process.env.BLOB_READ_WRITE_TOKEN,
       });
+
+      return NextResponse.json({ url: blob.url, filename });
     } finally {
       await browser.close();
     }
