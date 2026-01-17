@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     siteName: "Agentic Vision Board",
     images: [
       {
-        url: "/brand/og_vb_black.png",
+        url: "/brand/og_vb.png",
         width: 1200,
         height: 630,
         alt: "Agentic Vision Board - Create your 2026 vision board with AI",
@@ -51,7 +51,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Agentic Vision Board",
     description: "Create your 2026 vision board with AI-generated images",
-    images: ["/brand/og_vb_black.png"],
+    images: ["/brand/og_vb.png"],
   },
 };
 
