@@ -167,15 +167,15 @@ export function PDFExportDialog({ boardId, goals, trigger }: PDFExportDialogProp
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Export to PDF</DialogTitle>
           <DialogDescription>
             Generate a print-ready PDF. Perfect for printing and cutting out cards.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-5 py-4">
+        <div className="space-y-5 py-4 overflow-y-auto flex-1 min-h-0">
           {/* Layout Selection */}
           <div className="space-y-3">
             <p className="text-sm font-medium">Layout</p>
@@ -324,7 +324,7 @@ export function PDFExportDialog({ boardId, goals, trigger }: PDFExportDialogProp
         </div>
 
         {/* Actions */}
-        <div className="flex justify-end gap-3">
+        <div className="flex justify-end gap-3 flex-shrink-0 pt-4 border-t">
           <Button variant="outline" onClick={() => setOpen(false)}>
             Cancel
           </Button>
