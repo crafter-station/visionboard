@@ -210,26 +210,24 @@ export function BoardView({ board }: BoardViewProps) {
           prev.map((g) => (g.id === tempId ? { ...g, id: dbGoal.id } : g)),
         );
 
-        // Generate image and phrase in parallel
-        const [imageRes, phraseRes] = await Promise.all([
-          fetch("/api/generate-image", {
-            method: "POST",
-            headers: defaultHeaders,
-            body: JSON.stringify({
-              userImageUrl: userPhotoUrl,
-              goalId: dbGoal.id,
-              goalPrompt: title,
-            }),
-          }),
-          fetch("/api/generate-phrase", {
-            method: "POST",
-            headers: defaultHeaders,
-            body: JSON.stringify({ goalId: dbGoal.id, goalTitle: title }),
-          }),
-        ]);
-
-        const imageResult = await imageRes.json();
+        // Generate phrase first (creates scene data), then image (uses scene data)
+        const phraseRes = await fetch("/api/generate-phrase", {
+          method: "POST",
+          headers: defaultHeaders,
+          body: JSON.stringify({ goalId: dbGoal.id, goalTitle: title }),
+        });
         const phraseResult = await phraseRes.json();
+
+        const imageRes = await fetch("/api/generate-image", {
+          method: "POST",
+          headers: defaultHeaders,
+          body: JSON.stringify({
+            userImageUrl: userPhotoUrl,
+            goalId: dbGoal.id,
+            goalPrompt: title,
+          }),
+        });
+        const imageResult = await imageRes.json();
 
         // Check if image generation succeeded and returned a valid URL
         if (!imageRes.ok || !imageResult.imageUrl) {
@@ -299,16 +297,18 @@ export function BoardView({ board }: BoardViewProps) {
     [board.id, userPhotoUrl, credits, queryClient, userId],
   );
 
-  const deleteGoal = useCallback(async (goalId: string) => {
-    try {
-      await fetch(`/api/goals?id=${goalId}`, {
-        method: "DELETE",
-        headers: defaultHeaders,
-      });
-      setGoals((prev) => prev.filter((g) => g.id !== goalId));
-    } catch {
-      // Silently fail
-    }
+  const deleteGoal = useCallback((goalId: string) => {
+    // Optimistic: remove from UI immediately
+    setGoals((prev) => prev.filter((g) => g.id !== goalId));
+
+    // Fire API call in background
+    fetch(`/api/goals?id=${goalId}`, {
+      method: "DELETE",
+      headers: defaultHeaders,
+    }).catch(() => {
+      // If delete fails, we could restore the goal, but for now just log
+      console.error(`Failed to delete goal ${goalId}`);
+    });
   }, []);
 
   const checkoutUrl = userId

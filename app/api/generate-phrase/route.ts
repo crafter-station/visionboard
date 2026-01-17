@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { generatePhrase } from "@/lib/openai";
+import { generatePhraseAndScene } from "@/lib/openai";
 import { updateGoal } from "@/db/queries";
 import { validateRequest } from "@/lib/auth";
 
@@ -27,12 +27,15 @@ export async function POST(request: Request) {
     );
   }
 
-  const phrase = await generatePhrase(goalTitle);
+  const { phrase, scene } = await generatePhraseAndScene(goalTitle);
 
-  await updateGoal(goalId, { phrase });
+  console.log(`[generate-phrase] Goal ${goalId}: saving scene data:`, JSON.stringify(scene));
+  await updateGoal(goalId, { phrase, sceneData: scene });
+  console.log(`[generate-phrase] Goal ${goalId}: scene data saved successfully`);
 
   return NextResponse.json({
     goalId,
     phrase,
+    scene,
   });
 }

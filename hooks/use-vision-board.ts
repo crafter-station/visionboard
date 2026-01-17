@@ -473,17 +473,17 @@ export function useVisionBoard() {
       );
 
       try {
-        const [imageResult, phraseResult] = await Promise.all([
-          generateImageMutation.mutateAsync({
-            goalId,
-            goalPrompt: goal.title,
-            userImageUrl: boardData.avatarNoBgUrl,
-          }),
-          generatePhraseMutation.mutateAsync({
-            goalId,
-            goalTitle: goal.title,
-          }),
-        ]);
+        // Generate phrase first (creates scene data), then image (uses scene data)
+        const phraseResult = await generatePhraseMutation.mutateAsync({
+          goalId,
+          goalTitle: goal.title,
+        });
+
+        const imageResult = await generateImageMutation.mutateAsync({
+          goalId,
+          goalPrompt: goal.title,
+          userImageUrl: boardData.avatarNoBgUrl,
+        });
 
         // Only mark as completed if we have a valid imageUrl
         if (imageResult.imageUrl) {

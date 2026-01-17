@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, integer, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, integer, pgEnum, jsonb } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 export const goalStatusEnum = pgEnum("goal_status", [
@@ -36,6 +36,12 @@ export const goals = pgTable("goals", {
   title: text("title").notNull(),
   generatedImageUrl: text("generated_image_url"),
   phrase: text("phrase"),
+  sceneData: jsonb("scene_data").$type<{
+    setting: string;
+    action: string;
+    props: string[];
+    atmosphere: string;
+  }>(),
   status: goalStatusEnum("status").default("pending").notNull(),
   positionX: integer("position_x").default(0).notNull(),
   positionY: integer("position_y").default(0).notNull(),

@@ -103,7 +103,10 @@ export async function POST(request: Request) {
   await updateGoal(goalId, { status: "generating" });
 
   try {
-    const generatedUrl = await generateImageWithUser(userImageUrl, goalPrompt);
+    // Pass scene data to generate more accurate images
+    const sceneData = existingGoal.sceneData ?? undefined;
+    console.log(`[generate-image] Goal ${goalId}: fetched sceneData:`, sceneData ? JSON.stringify(sceneData) : "undefined");
+    const generatedUrl = await generateImageWithUser(userImageUrl, goalPrompt, sceneData);
 
     const response = await fetch(generatedUrl);
     if (!response.ok) {
