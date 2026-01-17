@@ -13,7 +13,7 @@
         "@radix-ui/react-dialog": "^1.1.15",
         "@radix-ui/react-slot": "^1.2.4",
         "@react-pdf/renderer": "^4.3.2",
-        "@sparticuz/chromium": "^143.0.4",
+        "@sparticuz/chromium-min": "^143.0.4",
         "@tanstack/react-query": "^5.90.16",
         "@upstash/ratelimit": "^2.0.7",
         "@upstash/redis": "^1.36.0",
@@ -372,7 +372,7 @@
 
     "@rtsao/scc": ["@rtsao/scc@1.1.0", "", {}, "sha512-zt6OdqaDoOnJ1ZYsCYGt9YmWzDXl4vQdKTyJev62gFhRGKdx7mcT54V9KIjg+d2wi9EXsPvAPKe7i7WjfVWB8g=="],
 
-    "@sparticuz/chromium": ["@sparticuz/chromium@143.0.4", "", { "dependencies": { "follow-redirects": "^1.15.11", "tar-fs": "^3.1.1" } }, "sha512-/6I7uQTRhRDD2/gGPQ1Gkf+Dqk0RYDACPJDZfSzz0OWk4JmUTonNHPXbrn6UIklOHlnDLf8xAAzkOZKB/cJpLA=="],
+    "@sparticuz/chromium-min": ["@sparticuz/chromium-min@143.0.4", "", { "dependencies": { "follow-redirects": "^1.15.11", "tar-fs": "^3.1.1" } }, "sha512-vAV731SUEVH0FUmMc+404ZoRq0glq7DlhEGpAX0C7/rXupZ0HasOIJHbrjNNNE+VElenkdmwBm8MVTzwYcFPyQ=="],
 
     "@stablelib/base64": ["@stablelib/base64@1.0.1", "", {}, "sha512-1bnPQqSxSuc3Ii6MhBysoWCg58j97aUjuCSZrGSmDxNqtytIi0k8utUenAwTZN4V5mXXYGsVUI9zeBqy+jBOSQ=="],
 
