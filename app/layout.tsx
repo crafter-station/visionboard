@@ -67,6 +67,11 @@ export default function RootLayout({
       appearance={{
         baseTheme: shadcn,
         variables: { borderRadius: "0px" },
+        elements: {
+          footerActionLink: { display: "none" },
+          footerActionText: { display: "none" },
+          footerAction: { display: "none" },
+        },
       }}
     >
       <html lang="en" suppressHydrationWarning>
