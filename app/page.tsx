@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { SignInButton, SignUpButton } from "@clerk/nextjs";
+import { SignInButton } from "@clerk/nextjs";
 import { useAuth } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { SponsorFooter } from "@/components/sponsor-footer";
@@ -53,17 +53,8 @@ export default function LandingPage() {
               <ThemeSwitcherButton />
               <GithubBadge />
               <SignInButton mode="modal">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="hidden sm:inline-flex"
-                >
-                  Sign In
-                </Button>
+                <Button size="sm">Get Started</Button>
               </SignInButton>
-              <SignUpButton mode="modal">
-                <Button size="sm">Sign Up</Button>
-              </SignUpButton>
             </div>
           </div>
         </div>
@@ -85,16 +76,11 @@ export default function LandingPage() {
               Visualize your goals. Manifest your future.
               </p>
             </div>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <SignUpButton mode="modal">
-                <Button size="lg" className="gap-2 w-full sm:w-auto">
-                  Get Started Free
-                  <ArrowRight className="size-4" />
-                </Button>
-              </SignUpButton>
+            <div className="flex items-center justify-center">
               <SignInButton mode="modal">
-                <Button variant="outline" size="lg" className="gap-2 w-full sm:w-auto">
-                  I have an account
+                <Button size="lg" className="gap-2">
+                  Get Started
+                  <ArrowRight className="size-4" />
                 </Button>
               </SignInButton>
             </div>
