@@ -3,6 +3,8 @@ import { DM_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { ThemeProvider } from "next-themes";
 import { ClerkProvider } from "@clerk/nextjs";
+import { shadcn } from "@clerk/themes";
+
 import { Providers } from "@/components/providers";
 import "./globals.css";
 
@@ -61,7 +63,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
+    <ClerkProvider
+      appearance={{
+        baseTheme: shadcn,
+        variables: { borderRadius: "0px" },
+      }}
+    >
       <html lang="en" suppressHydrationWarning>
         <body className={`${dmMono.variable} font-sans antialiased`}>
           <ThemeProvider
