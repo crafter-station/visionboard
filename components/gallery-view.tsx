@@ -81,7 +81,6 @@ export function GalleryView({
   const [newGoalTitle, setNewGoalTitle] = useState("");
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [deleteGoalId, setDeleteGoalId] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   // Filter out failed goals - they shouldn't clutter the UI
   const reversedGoals = useMemo(
@@ -395,22 +394,16 @@ export function GalleryView({
 
       <Dialog
         open={deleteGoalId !== null}
-        onOpenChange={(open) => !open && !isDeleting && setDeleteGoalId(null)}
+        onOpenChange={(open) => !open && setDeleteGoalId(null)}
       >
         <DialogContent
           className="sm:max-w-md"
-          onKeyDown={async (e) => {
-            if (isDeleting) return;
+          onKeyDown={(e) => {
             if (e.key === "d" || e.key === "D") {
               e.preventDefault();
               if (deleteGoalId && onDeleteGoal) {
-                setIsDeleting(true);
-                try {
-                  await onDeleteGoal(deleteGoalId);
-                } finally {
-                  setIsDeleting(false);
-                  setDeleteGoalId(null);
-                }
+                onDeleteGoal(deleteGoalId);
+                setDeleteGoalId(null);
               }
             }
             if (e.key === "c" || e.key === "C") {
@@ -427,11 +420,7 @@ export function GalleryView({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-3">
-            <Button
-              variant="outline"
-              onClick={() => setDeleteGoalId(null)}
-              disabled={isDeleting}
-            >
+            <Button variant="outline" onClick={() => setDeleteGoalId(null)}>
               Cancel
               <kbd className="ml-2 pointer-events-none inline-flex h-5 min-w-5 select-none items-center justify-center rounded border border-b-2 border-muted-foreground/30 bg-gradient-to-b from-muted to-muted/80 px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
                 C
@@ -439,29 +428,17 @@ export function GalleryView({
             </Button>
             <Button
               variant="destructive"
-              disabled={isDeleting}
-              onClick={async () => {
-                if (deleteGoalId && onDeleteGoal && !isDeleting) {
-                  setIsDeleting(true);
-                  try {
-                    await onDeleteGoal(deleteGoalId);
-                  } finally {
-                    setIsDeleting(false);
-                    setDeleteGoalId(null);
-                  }
+              onClick={() => {
+                if (deleteGoalId && onDeleteGoal) {
+                  onDeleteGoal(deleteGoalId);
+                  setDeleteGoalId(null);
                 }
               }}
             >
-              {isDeleting ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <>
-                  Delete
-                  <kbd className="ml-2 pointer-events-none inline-flex h-5 min-w-5 select-none items-center justify-center rounded border border-b-2 border-muted-foreground/30 bg-gradient-to-b from-destructive/20 to-destructive/10 px-1.5 font-mono text-[10px] font-medium text-destructive-foreground/80">
-                    D
-                  </kbd>
-                </>
-              )}
+              Delete
+              <kbd className="ml-2 pointer-events-none inline-flex h-5 min-w-5 select-none items-center justify-center rounded border border-b-2 border-muted-foreground/30 bg-gradient-to-b from-destructive/20 to-destructive/10 px-1.5 font-mono text-[10px] font-medium text-destructive-foreground/80">
+                D
+              </kbd>
             </Button>
           </DialogFooter>
         </DialogContent>
