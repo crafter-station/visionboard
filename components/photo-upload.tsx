@@ -184,7 +184,6 @@ export function PhotoUpload({ onUploadComplete }: PhotoUploadProps) {
             <input
               type="file"
               accept="image/*"
-              capture={isMobile ? "environment" : undefined}
               onChange={handleChange}
               className="absolute inset-0 opacity-0 cursor-pointer"
             />
