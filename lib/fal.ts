@@ -52,7 +52,11 @@ export async function removeBackground(imageUrl: string): Promise<string> {
 
   const result = await fal.subscribe("fal-ai/birefnet", {
     input: {
+      model: "Portrait",
+      // operating_resolution: "1024x1024",
+      // refine_foreground: true,
       image_url: imageUrl,
+      output_format: "png",
     },
   });
 
