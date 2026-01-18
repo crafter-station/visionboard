@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState, useEffect, useRef } from "react";
+import { toast } from "sonner";
 import type { Goal } from "@/components/goal-input";
 import { useAuth } from "./use-auth";
 import type { VisionBoard, Goal as DBGoalType } from "@/db/schema";
@@ -622,7 +623,8 @@ export function useVisionBoard() {
       setStep("gallery");
       return data.boardId;
     } catch (error) {
-      console.error("Failed to create board:", error);
+      const message = error instanceof Error ? error.message : "Failed to create board";
+      toast.error(message);
       return null;
     }
   }, [boardsData, userId, createBoardMutation]);
