@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { ThemeProvider } from "next-themes";
 import { ClerkProvider } from "@clerk/nextjs";
 import { shadcn } from "@clerk/themes";
+import { Toaster } from "sonner";
 
 import { Providers } from "@/components/providers";
 import "./globals.css";
@@ -85,6 +86,7 @@ export default function RootLayout({
             <Providers>{children}</Providers>
           </ThemeProvider>
           <Analytics />
+          <Toaster position="bottom-center" />
         </body>
       </html>
     </ClerkProvider>

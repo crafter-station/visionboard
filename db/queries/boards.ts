@@ -67,6 +67,16 @@ export async function countBoardsForProfile(
   return Number(result[0]?.count ?? 0);
 }
 
+export async function hasEmptyBoard(profileId: string): Promise<boolean> {
+  const boards = await db.query.visionBoards.findMany({
+    where: eq(visionBoards.profileId, profileId),
+    with: {
+      goals: true,
+    },
+  });
+  return boards.some((board) => board.goals.length === 0);
+}
+
 export async function countBoardsByIdentifier(
   identifier: UserIdentifier,
 ): Promise<number> {

@@ -10,6 +10,7 @@ import {
   getCreditsForProfile,
   generateDefaultBoardName,
   initializeFreeCredits,
+  hasEmptyBoard,
 } from "@/db/queries";
 import { LIMITS } from "@/lib/constants";
 import { getAuthIdentifier } from "@/lib/auth";
@@ -90,6 +91,15 @@ export async function POST() {
   if (!profile.avatarNoBgUrl) {
     return NextResponse.json(
       { error: "No avatar found. Upload a photo first." },
+      { status: 400 },
+    );
+  }
+
+  // Check if user already has an empty board
+  const userHasEmptyBoard = await hasEmptyBoard(profile.id);
+  if (userHasEmptyBoard) {
+    return NextResponse.json(
+      { error: "You already have an empty board. Add goals to it before creating a new one." },
       { status: 400 },
     );
   }
